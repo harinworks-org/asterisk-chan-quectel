@@ -727,272 +727,284 @@ struct pvt* pvt_find_by_ext(const char* name)
     return pvt;
 }
 
+struct pvt_test_fn {
+    int opts;
+    const struct ast_channel* requestor;
+    int (*test_fn)(struct pvt*, unsigned int);
+};
+
+static int call_pvt_test_fn(const struct pvt_test_fn* const fn, struct pvt* pvt)
+{
+    if (fn->opts & CALL_FLAG_INTERNAL_REQUEST) {
+        return 1;
+    }
+
+    if ((fn->opts & CALL_FLAG_HOLD_OTHER) == CALL_FLAG_HOLD_OTHER && channel_self_request(pvt, fn->requestor)) {
+        return 0;
+    }
+
+    if (!fn->test_fn) {
+        return 1;
+    }
+
+    return (*fn->test_fn)(pvt, fn->opts);
+}
+
+void* get_rr_next(struct ao2_iterator* i, const struct pvt_test_fn* const fn, void* last_used)
+{
+    void* obj = NULL;
+    if (last_used) {
+        int last_used_found = 0;
+        while ((obj = ao2_iterator_next(i))) {
+            if (last_used_found) {
+                SCOPED_AO2LOCK(pvt_lock, obj);
+                if (call_pvt_test_fn(fn, obj)) {
+                    break;
+                }
+            }
+
+            if (obj == last_used) {
+                last_used_found = 1;
+            }
+            ao2_ref(obj, -1);
+        }
+
+        if (obj) {
+            return obj;
+        }
+        ao2_iterator_restart(i);
+    }
+
+    while ((obj = ao2_iterator_next(i))) {
+        if (obj == last_used) {
+            ao2_ref(obj, -1);
+            return NULL;
+        }
+
+        {
+            SCOPED_AO2LOCK(pvt_lock, obj);
+            if (call_pvt_test_fn(fn, obj)) {
+                break;
+            }
+        }
+        ao2_ref(obj, -1);
+    }
+    return obj;
+}
+
+struct pvt_find_by_group {
+    int group;
+};
+
+static int pvt_find_by_goup_cb(void* obj, void* arg, attribute_unused int flags)
+{
+    SCOPED_AO2LOCK(obj_lock, obj);
+    const struct pvt_find_by_group* const f = arg;
+    const struct pvt* const pvt             = obj;
+
+    if (CONF_SHARED(pvt, group) != f->group) {
+        return 0;
+    }
+
+    return CMP_MATCH;
+}
+
+struct pvt_find_by_group_rr {
+    int group;
+    void* last_used;
+};
+
+static int pvt_find_by_goup_rr_cb(void* obj, void* arg, attribute_unused int flags)
+{
+    SCOPED_AO2LOCK(obj_lock, obj);
+    struct pvt_find_by_group_rr* f = arg;
+    struct pvt* pvt                = obj;
+
+    if (CONF_SHARED(pvt, group) != f->group) {
+        return 0;
+    }
+
+    if (pvt->group_last_used) {
+        pvt->group_last_used = 0;
+        f->last_used         = pvt;
+    }
+
+    return CMP_MATCH;
+}
+
+struct pvt_find_by_provider_name_rr {
+    const char* provider_name;
+    void* last_used;
+};
+
+static int pvt_find_by_provider_name_rr_cb(void* obj, void* arg, attribute_unused int flags)
+{
+    SCOPED_AO2LOCK(obj_lock, obj);
+    struct pvt_find_by_provider_name_rr* f = arg;
+    struct pvt* pvt                        = obj;
+
+    if (strcmp(pvt->provider_name, f->provider_name)) {
+        return 0;
+    }
+
+    if (pvt->prov_last_used) {
+        pvt->prov_last_used = 0;
+        f->last_used        = pvt;
+    }
+
+    return CMP_MATCH;
+}
+
+struct pvt_find_by_imsi_rr {
+    const char* imsi;
+    void* last_used;
+};
+
+static int pvt_find_by_imsi_rr_cb(void* obj, void* arg, attribute_unused int flags)
+{
+    SCOPED_AO2LOCK(obj_lock, obj);
+    struct pvt_find_by_imsi_rr* f = arg;
+    struct pvt* pvt               = obj;
+
+    if (strcmp(pvt->imsi, f->imsi)) {
+        return 0;
+    }
+
+    if (pvt->sim_last_used) {
+        pvt->sim_last_used = 0;
+        f->last_used       = pvt;
+    }
+
+    return CMP_MATCH;
+}
+
+struct pvt_find_by_imei {
+    const char* imei;
+};
+
+static int pvt_find_by_imei_cb(void* obj, void* arg, attribute_unused int flags)
+{
+    SCOPED_AO2LOCK(obj_lock, obj);
+    const struct pvt_find_by_imei* f = arg;
+    const struct pvt* pvt            = obj;
+
+    if (strcmp(pvt->imei, f->imei)) {
+        return 0;
+    }
+
+    return CMP_MATCH;
+}
+
+struct pvt_find_by_iccid {
+    const char* iccid;
+};
+
+static int pvt_find_by_iccid_cb(void* obj, void* arg, attribute_unused int flags)
+{
+    SCOPED_AO2LOCK(obj_lock, obj);
+    const struct pvt_find_by_iccid* f = arg;
+    const struct pvt* pvt             = obj;
+
+    if (strcmp(pvt->iccid, f->iccid)) {
+        return 0;
+    }
+
+    return CMP_MATCH;
+}
+
+struct pvt_find_by_id {
+    const char* id;
+};
+
+static int pvt_find_by_id_cb(void* obj, void* arg, attribute_unused int flags)
+{
+    SCOPED_AO2LOCK(obj_lock, obj);
+    const struct pvt_find_by_id* f = arg;
+    const struct pvt* pvt          = obj;
+
+    if (strcmp(PVT_ID(pvt), f->id)) {
+        return 0;
+    }
+
+    return CMP_MATCH | CMP_STOP;
+}
+
 static struct pvt* pvt_find_by_resource_fn(struct public_state* state, const char* resource, unsigned int opts, int (*pvt_test_fn)(struct pvt*, unsigned int),
                                            const struct ast_channel* requestor, int* exists)
 {
-    auto int test_fn(struct pvt * pvt)
-    {
-        if (opts & CALL_FLAG_INTERNAL_REQUEST) {
-            return 1;
-        }
-
-        if ((opts & CALL_FLAG_HOLD_OTHER) == CALL_FLAG_HOLD_OTHER && channel_self_request(pvt, requestor)) {
-            return 0;
-        }
-
-        return (*pvt_test_fn)(pvt, opts);
-    }
-
-    int group;
-    size_t i;
-    size_t j;
-    size_t c;
-    size_t last_used;
-    struct pvt* pvt;
-    struct pvt* found = NULL;
-    struct pvt* round_robin[MAXQUECTELDEVICES];
-
-    *exists = 0;
-    /* Find requested device and make sure it's connected and initialized. */
+    const struct pvt_test_fn test_fn = {.opts = opts, .requestor = requestor, .test_fn = pvt_test_fn};
+    *exists                          = 0;
+    struct pvt* found                = NULL;
 
     if (((resource[0] == 'g') || (resource[0] == 'G')) && ((resource[1] >= '0') && (resource[1] <= '9'))) {
-        errno = 0;
-        group = (int)strtol(&resource[1], (char**)NULL, 10);
+        errno           = 0;
+        const int group = (int)strtol(&resource[1], (char**)NULL, 10);
         if (errno != EINVAL) {
-            struct ao2_iterator i = ao2_iterator_init(state->pvts, 0);
-            while ((pvt = ao2_iterator_next(&i))) {
-                if (ao2_lock(pvt)) {
-                    ao2_ref(pvt, -1);
-                    continue;
-                }
-                if (CONF_SHARED(pvt, group) == group) {
-                    *exists = 1;
-                    if (test_fn(pvt)) {
-                        found = pvt;
-                        break;
-                    }
-                }
-                AO2_UNLOCK_AND_UNREF(pvt);
-            }
-            ao2_iterator_destroy(&i);
+            const struct pvt_find_by_group f = {.group = group};
+            struct ao2_iterator* i           = ao2_callback(state->pvts, OBJ_MULTIPLE, pvt_find_by_goup_cb, (void*)&f);
+            *exists                          = ao2_iterator_count(i);
+            found                            = get_rr_next(i, &test_fn, NULL);
+            ao2_iterator_destroy(i);
         }
     } else if (((resource[0] == 'r') || (resource[0] == 'R')) && ((resource[1] >= '0') && (resource[1] <= '9'))) {
-        errno = 0;
-        group = (int)strtol(&resource[1], (char**)NULL, 10);
+        errno           = 0;
+        const int group = (int)strtol(&resource[1], (char**)NULL, 10);
         if (errno != EINVAL) {
-            /* Generate a list of all available devices */
-            j                      = ARRAY_LEN(round_robin);
-            c                      = 0;
-            last_used              = 0;
-            struct ao2_iterator it = ao2_iterator_init(state->pvts, 0);
-            while ((pvt = ao2_iterator_next(&it))) {
-                if (ao2_lock(pvt)) {
-                    ao2_ref(pvt, -1);
-                    continue;
-                }
-                if (CONF_SHARED(pvt, group) == group) {
-                    round_robin[c] = pvt;
-                    if (pvt->group_last_used == 1) {
-                        pvt->group_last_used = 0;
-                        last_used            = c;
-                    }
-
-                    ao2_unlock(pvt);
-                    if (++c == j) {
-                        break;
-                    }
-                } else {
-                    AO2_UNLOCK_AND_UNREF(pvt);
-                }
+            const struct pvt_find_by_group_rr f = {.group = group, .last_used = NULL};
+            struct ao2_iterator* i              = ao2_callback(state->pvts, OBJ_MULTIPLE, pvt_find_by_goup_rr_cb, (void*)&f);
+            *exists                             = ao2_iterator_count(i);
+            found                               = get_rr_next(i, &test_fn, f.last_used);
+            if (found) {
+                SCOPED_AO2LOCK(found_lock, found);
+                found->group_last_used = 1;
             }
-            ao2_iterator_destroy(&it);
-
-            /* Search for a available device starting at the last used device */
-            for (i = 0, j = last_used + 1; i < c; i++, j++) {
-                if (j == c) {
-                    j = 0;
-                }
-
-                pvt = round_robin[j];
-                if (found) {
-                    ao2_ref(pvt, -1);
-                    continue;
-                }
-
-                if (ao2_lock(pvt)) {
-                    ao2_ref(pvt, -1);
-                    continue;
-                }
-                *exists = 1;
-                if (test_fn(pvt)) {
-                    pvt->group_last_used = 1;
-                    found                = pvt;
-                } else {
-                    AO2_UNLOCK_AND_UNREF(pvt);
-                }
-            }
+            ao2_iterator_destroy(i);
         }
     } else if (((resource[0] == 'p') || (resource[0] == 'P')) && resource[1] == ':') {
-        /* Generate a list of all available devices */
-        j                      = ARRAY_LEN(round_robin);
-        c                      = 0;
-        last_used              = 0;
-        struct ao2_iterator it = ao2_iterator_init(state->pvts, 0);
-        while ((pvt = ao2_iterator_next(&it))) {
-            if (ao2_lock(pvt)) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-            if (!strcmp(pvt->provider_name, &resource[2])) {
-                round_robin[c] = pvt;
-                if (pvt->prov_last_used == 1) {
-                    pvt->prov_last_used = 0;
-                    last_used           = c;
-                }
-
-                ao2_unlock(pvt);
-                if (++c == j) {
-                    break;
-                }
-            } else {
-                AO2_UNLOCK_AND_UNREF(pvt);
-            }
+        const struct pvt_find_by_provider_name_rr f = {.provider_name = &resource[2], .last_used = NULL};
+        struct ao2_iterator* i                      = ao2_callback(state->pvts, OBJ_MULTIPLE, pvt_find_by_provider_name_rr_cb, (void*)&f);
+        *exists                                     = ao2_iterator_count(i);
+        found                                       = get_rr_next(i, &test_fn, f.last_used);
+        if (found) {
+            SCOPED_AO2LOCK(found_lock, found);
+            found->prov_last_used = 1;
         }
-        ao2_iterator_destroy(&it);
-
-        /* Search for a available device starting at the last used device */
-        for (i = 0, j = last_used + 1; i < c; ++i, ++j) {
-            if (j == c) {
-                j = 0;
-            }
-
-            pvt = round_robin[j];
-            if (found) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-
-            if (ao2_lock(pvt)) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-
-            *exists = 1;
-            if (test_fn(pvt)) {
-                pvt->prov_last_used = 1;
-                found               = pvt;
-            } else {
-                AO2_UNLOCK_AND_UNREF(pvt);
-            }
-        }
+        ao2_iterator_destroy(i);
     } else if (((resource[0] == 's') || (resource[0] == 'S')) && resource[1] == ':') {
-        /* Generate a list of all available devices */
-        j                      = ARRAY_LEN(round_robin);
-        c                      = 0;
-        last_used              = 0;
-        const size_t len       = strlen(&resource[2]);
-        struct ao2_iterator it = ao2_iterator_init(state->pvts, 0);
-        while ((pvt = ao2_iterator_next(&it))) {
-            if (ao2_lock(pvt)) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-            if (!strncmp(pvt->imsi, &resource[2], len)) {
-                round_robin[c] = pvt;
-                if (pvt->sim_last_used == 1) {
-                    pvt->sim_last_used = 0;
-                    last_used          = c;
-                }
-
-                ao2_unlock(pvt);
-                if (++c == j) {
-                    break;
-                }
-            } else {
-                AO2_UNLOCK_AND_UNREF(pvt);
-            }
+        const struct pvt_find_by_imsi_rr f = {.imsi = &resource[2], .last_used = NULL};
+        struct ao2_iterator* i             = ao2_callback(state->pvts, OBJ_MULTIPLE, pvt_find_by_imsi_rr_cb, (void*)&f);
+        *exists                            = ao2_iterator_count(i);
+        found                              = get_rr_next(i, &test_fn, f.last_used);
+        if (found) {
+            SCOPED_AO2LOCK(found_lock, found);
+            found->sim_last_used = 1;
         }
-        ao2_iterator_destroy(&it);
-
-        /* Search for a available device starting at the last used device */
-        for (i = 0, j = last_used + 1; i < c; ++i, ++j) {
-            if (j == c) {
-                j = 0;
-            }
-
-            pvt = round_robin[j];
-            if (found) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-
-            if (ao2_lock(pvt)) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-
-            *exists = 1;
-            if (test_fn(pvt)) {
-                pvt->sim_last_used = 1;
-                found              = pvt;
-            } else {
-                AO2_UNLOCK_AND_UNREF(pvt);
-            }
-        }
+        ao2_iterator_destroy(i);
     } else if (((resource[0] == 'i') || (resource[0] == 'I')) && resource[1] == ':') {
-        struct ao2_iterator it = ao2_iterator_init(state->pvts, 0);
-        while ((pvt = ao2_iterator_next(&it))) {
-            if (ao2_lock(pvt)) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-            if (!strcmp(pvt->imei, &resource[2])) {
-                *exists = 1;
-                if (test_fn(pvt)) {
-                    found = pvt;
-                    break;
-                }
-            } else {
-                AO2_UNLOCK_AND_UNREF(pvt);
-            }
-        }
-        ao2_iterator_destroy(&it);
+        const struct pvt_find_by_imei f = {.imei = &resource[2]};
+        struct ao2_iterator* i          = ao2_callback(state->pvts, OBJ_MULTIPLE, pvt_find_by_imei_cb, (void*)&f);
+        *exists                         = ao2_iterator_count(i);
+        found                           = get_rr_next(i, &test_fn, NULL);
+        ao2_iterator_destroy(i);
     } else if (((resource[0] == 'j') || (resource[0] == 'J')) && resource[1] == ':') {
-        struct ao2_iterator it = ao2_iterator_init(state->pvts, 0);
-        while ((pvt = ao2_iterator_next(&it))) {
-            if (ao2_lock(pvt)) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-            if (!strcmp(pvt->iccid, &resource[2])) {
-                *exists = 1;
-                if (test_fn(pvt)) {
-                    found = pvt;
-                    break;
-                }
-            } else {
-                AO2_UNLOCK_AND_UNREF(pvt);
-            }
-        }
-        ao2_iterator_destroy(&it);
+        const struct pvt_find_by_iccid f = {.iccid = &resource[2]};
+        struct ao2_iterator* i           = ao2_callback(state->pvts, OBJ_MULTIPLE, pvt_find_by_iccid_cb, (void*)&f);
+        *exists                          = ao2_iterator_count(i);
+        found                            = get_rr_next(i, &test_fn, NULL);
+        ao2_iterator_destroy(i);
     } else {
-        struct ao2_iterator it = ao2_iterator_init(state->pvts, 0);
-        while ((pvt = ao2_iterator_next(&it))) {
-            if (ao2_lock(pvt)) {
-                ao2_ref(pvt, -1);
-                continue;
-            }
-            if (!strcmp(PVT_ID(pvt), resource)) {
-                *exists = 1;
-                if (test_fn(pvt)) {
-                    found = pvt;
-                    break;
-                }
-            } else {
-                AO2_UNLOCK_AND_UNREF(pvt);
-            }
+        const struct pvt_find_by_id f = {.id = resource};
+        struct ao2_iterator* i        = ao2_callback(state->pvts, OBJ_MULTIPLE, pvt_find_by_id_cb, (void*)&f);
+        *exists                       = ao2_iterator_count(i);
+        found                         = get_rr_next(i, &test_fn, NULL);
+        ao2_iterator_destroy(i);
+    }
+
+    if (found) {
+        if (ao2_lock(found)) {
+            ao2_ref(found, -1);
+            found = NULL;
         }
-        ao2_iterator_destroy(&it);
     }
 
     return found;
