@@ -84,7 +84,11 @@ static int msg_send(const struct ast_msg* msg, const char* to, attribute_unused 
     parse_msg_vars(msg, &validity, &report);
 
     ast_verb(1, "MSG[%s]: <%s>: [%s]\n", dest, msg_to, S_OR(msg_body, ""));
-    return send_sms(dest, "", msg_to, S_OR(msg_body, ""), validity, report);
+    if (send_sms(dest, "", msg_to, S_OR(msg_body, ""), validity, report)) {
+        ast_log(LOG_ERROR, "[%s] %s\n", dest, error2str(chan_quectel_err));
+        return 1;
+    }
+    return 0;
 }
 
 static const struct ast_msg_tech msg_tech = {.name = "mobile", .msg_send = &msg_send};
