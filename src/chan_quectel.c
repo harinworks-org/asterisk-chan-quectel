@@ -658,14 +658,10 @@ int pvt_taskproc_trylock_and_execute(struct pvt* pvt, void (*task_exe)(struct pv
         return 0;
     }
 
+    ao2_ref(pvt, 1);
     if (ao2_trylock(pvt)) {
+        ao2_ref(pvt, -1);
         ast_debug(4, "[%s] Task skipping: no lock\n", S_OR(task_name, "UNKNOWN"));
-        return 0;
-    }
-
-    if (pvt->terminate_monitor) {
-        ast_debug(5, "[%s][%s] Task skipping: monitor thread terminated\n", PVT_ID(pvt), S_OR(task_name, "UNKNOWN"));
-        ao2_unlock(pvt);
         return 0;
     }
 
@@ -673,6 +669,7 @@ int pvt_taskproc_trylock_and_execute(struct pvt* pvt, void (*task_exe)(struct pv
     task_exe(pvt);
     ast_debug(6, "[%s][%s] Task executed\n", PVT_ID(pvt), S_OR(task_name, "UNKNOWN"));
     ao2_unlock(pvt);
+    ao2_ref(pvt, -1);
     return 0;
 }
 
@@ -682,16 +679,11 @@ int pvt_taskproc_lock_and_execute(struct pvt_taskproc_data* ptd, void (*task_exe
         return 0;
     }
 
-    SCOPED_AO2LOCK(plock, ptd->pvt);
-
-    if (ptd->pvt->terminate_monitor) {
-        ast_debug(5, "[%s][%s] Task skipping: monitor thread terminated\n", PVT_ID(ptd->pvt), S_OR(task_name, "UNKNOWN"));
-        return 0;
-    }
-
+    AO2_REF_AND_LOCK(ptd->pvt);
     ast_debug(5, "[%s][%s] Task executing\n", PVT_ID(ptd->pvt), S_OR(task_name, "UNKNOWN"));
     task_exe(ptd);
     ast_debug(6, "[%s][%s] Task executed\n", PVT_ID(ptd->pvt), S_OR(task_name, "UNKNOWN"));
+    AO2_UNLOCK_AND_UNREF(ptd->pvt);
     return 0;
 }
 
@@ -1236,16 +1228,17 @@ static struct pvt* pvt_create(const pvt_config_t* settings)
     AST_LIST_HEAD_INIT_NOLOCK(&pvt->at_queue);
     AST_LIST_HEAD_INIT_NOLOCK(&pvt->chans);
 
-    pvt->monitor_thread     = AST_PTHREADT_NULL;
-    pvt->sys_chan.pvt       = pvt;
-    pvt->sys_chan.state     = CALL_STATE_RELEASED;
-    pvt->audio_fd           = -1;
-    pvt->data_fd            = -1;
-    pvt->gsm_reg_status     = -1;
-    pvt->has_sms            = SCONFIG(settings, msg_direct) ? 0 : 1;
-    pvt->incoming_sms_index = -1;
-    pvt->incoming_sms_type  = RES_UNKNOWN;
-    pvt->desired_state      = SCONFIG(settings, init_state);
+    pvt->monitor_thread       = AST_PTHREADT_NULL;
+    pvt->monitor_thread_event = -1;
+    pvt->sys_chan.pvt         = pvt;
+    pvt->sys_chan.state       = CALL_STATE_RELEASED;
+    pvt->audio_fd             = -1;
+    pvt->data_fd              = -1;
+    pvt->gsm_reg_status       = -1;
+    pvt->has_sms              = SCONFIG(settings, msg_direct) ? 0 : 1;
+    pvt->incoming_sms_index   = -1;
+    pvt->incoming_sms_type    = RES_UNKNOWN;
+    pvt->desired_state        = SCONFIG(settings, init_state);
 
     ast_string_field_init(pvt, 14);
     ast_string_field_set(pvt, provider_name, "NONE");

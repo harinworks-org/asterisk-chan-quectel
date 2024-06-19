@@ -18,6 +18,7 @@
 #include "at_read.h"
 #include "chan_quectel.h"
 #include "channel.h"
+#include "eventfd.h"
 #include "helpers.h"
 #include "smsdb.h"
 #include "tty.h"
@@ -70,10 +71,6 @@ static void handle_expired_reports(struct pvt* pvt)
 
 static int handle_expired_reports_taskproc(void* tpdata) { return PVT_TASKPROC_TRYLOCK_AND_EXECUTE(tpdata, handle_expired_reports); }
 
-static void restart_monitor(struct pvt* pvt) { pvt->terminate_monitor = 1; }
-
-static int restart_monitor_taskproc(void* tpdata) { return PVT_TASKPROC_TRYLOCK_AND_EXECUTE(tpdata, restart_monitor); }
-
 static void cmd_timeout(struct pvt* const pvt)
 {
     const struct at_queue_cmd* const ecmd = at_queue_head_cmd(pvt);
@@ -83,7 +80,7 @@ static void cmd_timeout(struct pvt* const pvt)
 
     if (at_response(pvt, &pvt->empty_str, RES_TIMEOUT)) {
         ast_log(LOG_ERROR, "[%s] Fail to handle response\n", PVT_ID(pvt));
-        pvt->terminate_monitor = 1;
+        eventfd_signal(pvt->monitor_thread_event);
         return;
     }
 
@@ -91,7 +88,7 @@ static void cmd_timeout(struct pvt* const pvt)
         return;
     }
 
-    pvt->terminate_monitor = 1;
+    eventfd_signal(pvt->monitor_thread_event);
 }
 
 static int cmd_timeout_taskproc(void* tpdata) { return PVT_TASKPROC_TRYLOCK_AND_EXECUTE(tpdata, cmd_timeout); }
@@ -165,6 +162,19 @@ static int check_dev_status(struct pvt* const pvt, struct ast_taskprocessor* tps
     return 0;
 }
 
+static int at_wait_n(int* fds, int n, int* ms)
+{
+    int exception;
+
+    const int outfd = ast_waitfor_n_fd(fds, n, ms, &exception);
+
+    if (outfd < 0) {
+        return 0;
+    }
+
+    return outfd;
+}
+
 static void monitor_threadproc_pvt(struct pvt* const pvt)
 {
     static const size_t RINGBUFFER_SIZE = 2 * 1024;
@@ -188,8 +198,8 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
     }
 
     /* 4 reduce locking time make copy of this readonly fields */
-    const int fd = pvt->data_fd;
-    at_clean_data(dev, fd, &rb);
+    int fd[2] = {pvt->data_fd, pvt->monitor_thread_event};
+    at_clean_data(dev, fd[0], &rb);
 
     /* schedule initilization  */
     if (at_enqueue_initialization(&pvt->sys_chan)) {
@@ -206,8 +216,12 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
         }
 
         if (ao2_trylock(pvt)) {  // pvt unlocked
-            int t = RESPONSE_READ_TIMEOUT;
-            if (!at_wait(fd, &t)) {
+            int t       = RESPONSE_READ_TIMEOUT;
+            const int w = at_wait_n(fd, 2, &t);
+            if (w == fd[1]) {
+                eventfd_reset(pvt->monitor_thread_event);
+                goto e_restart;
+            } else if (w != fd[0]) {
                 if (ast_taskprocessor_push(tps, at_enqueue_ping_taskproc, pvt)) {
                     ast_debug(5, "[%s] Unable to handle timeout\n", dev);
                 }
@@ -216,11 +230,6 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
         } else {  // pvt locked
             if (check_dev_status(pvt, tps)) {
                 goto e_cleanup;
-            }
-
-            if (pvt->terminate_monitor) {
-                ast_log(LOG_NOTICE, "[%s] Stopping by %s request\n", dev, dev_state2str(pvt->desired_state));
-                goto e_restart;
             }
 
             int t;
@@ -234,32 +243,45 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
             if (is_cmd_timeout) {
                 if (t <= 0) {
                     if (check_taskprocessor(tps, dev)) {
-                        if (ast_taskprocessor_push(tps, restart_monitor_taskproc, pvt)) {
-                            ast_debug(5, "[%s] Unable to restart monitor thread\n", dev);
-                        }
+                        eventfd_signal(pvt->monitor_thread_event);
                     }
 
                     if (ast_taskprocessor_push(tps, cmd_timeout_taskproc, pvt)) {
                         ast_debug(5, "[%s] Unable to handle timeout\n", dev);
                     }
 
-                    t = UNHANDLED_COMMAND_TIMEOUT;
-                    if (!at_wait(fd, &t)) {
+                    t           = UNHANDLED_COMMAND_TIMEOUT;
+                    const int w = at_wait_n(fd, 2, &t);
+                    if (w == fd[1]) {
+                        eventfd_reset(pvt->monitor_thread_event);
+                        goto e_restart;
+                    } else if (w != fd[0]) {
                         continue;
                     }
-                } else if (!at_wait(fd, &t)) {
-                    if (ast_taskprocessor_push(tps, cmd_timeout_taskproc, pvt)) {
-                        ast_debug(5, "[%s] Unable to handle timeout\n", dev);
+                } else {
+                    const int w = at_wait_n(fd, 2, &t);
+                    if (w == fd[1]) {
+                        eventfd_reset(pvt->monitor_thread_event);
+                        goto e_restart;
+
+                    } else if (w != fd[0]) {
+                        if (ast_taskprocessor_push(tps, cmd_timeout_taskproc, pvt)) {
+                            ast_debug(5, "[%s] Unable to handle timeout\n", dev);
+                        }
+                        continue;
                     }
-                    continue;
                 }
             } else {
-                t = RESPONSE_READ_TIMEOUT;
-                if (!at_wait(fd, &t)) {
+                t           = RESPONSE_READ_TIMEOUT;
+                const int w = at_wait_n(fd, 2, &t);
+                if (w == fd[1]) {
+                    eventfd_reset(pvt->monitor_thread_event);
+                    goto e_restart;
+
+                } else if (w != fd[0]) {
                     if (check_taskprocessor(tps, dev)) {
-                        if (ast_taskprocessor_push(tps, restart_monitor_taskproc, pvt)) {
-                            ast_debug(5, "[%s] Unable to restart monitor thread\n", dev);
-                        }
+                        eventfd_signal(pvt->monitor_thread_event);
+                        goto e_restart;
                     }
 
                     if (ast_taskprocessor_push(tps, at_enqueue_ping_taskproc, pvt)) {
@@ -271,7 +293,7 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
         }
 
         /* FIXME: access to device not locked */
-        int iovcnt = at_read(dev, fd, &rb);
+        int iovcnt = at_read(dev, fd[0], &rb);
         if (iovcnt < 0) {
             break;
         }
@@ -310,8 +332,6 @@ e_cleanup:
         // TODO: send monitor event
         ast_verb(3, "[%s] Error initializing channel\n", dev);
     }
-    /* it real, unsolicited disconnect */
-    pvt->terminate_monitor = 0;
 
 e_restart:
     pvt_disconnect(pvt);
@@ -329,9 +349,17 @@ static void* monitor_threadproc(void* _pvt)
 int pvt_monitor_start(struct pvt* pvt)
 {
     ao2_ref(pvt, 1);
+
+    const int monitor_thread_event = eventfd_create();
+    if (monitor_thread_event <= 0) {
+        return 0;
+    }
+
+    pvt->monitor_thread_event = monitor_thread_event;
     if (ast_pthread_create_background(&pvt->monitor_thread, NULL, monitor_threadproc, pvt) < 0) {
         ao2_ref(pvt, -1);
         pvt->monitor_thread = AST_PTHREADT_NULL;
+        eventfd_close(&pvt->monitor_thread_event);
         return 0;
     }
 
@@ -344,8 +372,7 @@ void pvt_monitor_stop(struct pvt* pvt)
         return;
     }
 
-    pvt->terminate_monitor = 1;
-    pthread_kill(pvt->monitor_thread, SIGURG);
+    eventfd_signal(pvt->monitor_thread_event);
 
     {
         const pthread_t id = pvt->monitor_thread;
@@ -353,6 +380,6 @@ void pvt_monitor_stop(struct pvt* pvt)
         pthread_join(id, NULL);
     }
 
-    pvt->terminate_monitor = 0;
-    pvt->monitor_thread    = AST_PTHREADT_NULL;
+    pvt->monitor_thread = AST_PTHREADT_NULL;
+    eventfd_close(&pvt->monitor_thread_event);
 }

@@ -98,6 +98,7 @@ typedef struct pvt {
 
     unsigned long channel_instance; /*!< number of channels created on this device */
     pthread_t monitor_thread;       /*!< monitor (at commands reader) thread handle */
+    int monitor_thread_event;
 
     int audio_fd; /*!< audio descriptor */
     snd_pcm_t* icard;
@@ -166,7 +167,6 @@ typedef struct pvt {
     unsigned int prov_last_used :1; /*!< mark the last used device */
     unsigned int sim_last_used  :1; /*!< mark the last used device */
 
-    unsigned int terminate_monitor    :1; /*!< non-zero if we want terminate monitor thread i.e. restart, stop, remove */
     unsigned int has_subscriber_number:1; /*!< subscriber_number field is valid */
     unsigned int must_remove          :1; /*!< mean must removed from list: NOT FULLY THREADSAFE */
 
