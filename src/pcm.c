@@ -99,7 +99,7 @@ int pcm_init(const char* dev, snd_pcm_stream_t stream, const struct ast_format* 
 #else
     const size_t ptime = (stream == SND_PCM_STREAM_CAPTURE) ? PTIME_CAPTURE : PTIME_PLAYBACK;
 #endif
-    snd_pcm_uframes_t period_size     = adjust_uframes(ptime, rate);
+    snd_pcm_uframes_t period_size     = adjust_uframes(ptime + 10, rate);
     snd_pcm_uframes_t buffer_size     = adjust_uframes(PTIME_BUFFER, rate);
     snd_pcm_uframes_t start_threshold = adjust_uframes(adjust_start_threshold(ptime * 2), rate);
     snd_pcm_uframes_t stop_threshold  = buffer_size - period_size;

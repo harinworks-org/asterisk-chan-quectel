@@ -251,7 +251,8 @@ struct cpvt* pvt_channel_find_by_call_idx(struct pvt* pvt, int call_idx);
 struct cpvt* pvt_channel_find_active(struct pvt* pvt);
 struct cpvt* pvt_channel_find_last_initialized(struct pvt* pvt);
 
-void pvt_unlock(struct pvt* const pvt);
+int pvt_lock(struct pvt* const pvt);
+int pvt_unlock(struct pvt* const pvt);
 
 int pvt_taskproc_trylock_and_execute(struct pvt* pvt, void (*task_exe)(struct pvt* pvt), const char* task_name);
 #define PVT_TASKPROC_TRYLOCK_AND_EXECUTE(p, t) pvt_taskproc_trylock_and_execute(p, t, #t)

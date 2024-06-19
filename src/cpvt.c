@@ -71,14 +71,14 @@ struct cpvt* cpvt_alloc(struct pvt* pvt, int call_idx, unsigned dir, call_state_
     }
 
     const struct ast_format* const fmt = pvt_get_audio_format(pvt);
-    const size_t buffer_size           = pvt_get_audio_frame_size(PTIME_PLAYBACK, fmt);
+    const size_t buffer_size           = pvt_get_audio_frame_size(PTIME_CAPTURE, fmt);
 
     cpvt->pvt        = pvt;
     cpvt->call_idx   = call_idx;
     cpvt->state      = state;
     cpvt->rd_pipe[0] = fd[0];
     cpvt->rd_pipe[1] = fd[1];
-    cpvt->buffer     = ast_calloc(1, buffer_size + AST_FRIENDLY_OFFSET);
+    cpvt->buffer     = ast_calloc(1, buffer_size);
 
     CPVT_SET_DIRECTION(cpvt, dir);
     CPVT_SET_LOCAL(cpvt, local_channel);
@@ -376,42 +376,27 @@ int cpvt_change_state(struct cpvt* const cpvt, call_state_t newstate, int cause)
 
 int cpvt_lock(struct cpvt* const cpvt)
 {
+    if (!cpvt) {
+        return -1;
+    }
+
     struct pvt* const pvt = cpvt->pvt;
     if (!pvt) {
         return -1;
     }
 
-    return AO2_REF_AND_LOCK(pvt);
+    return pvt_lock(pvt);
 }
 
-void cpvt_try_lock(struct cpvt* const cpvt)
-{
-    struct pvt* const pvt = cpvt->pvt;
-    if (!pvt) {
-        return;
-    }
-
-    struct ast_channel* const channel = cpvt->channel;
-    if (!channel) {
-        return;
-    }
-
-    ao2_ref(pvt, 1);
-
-    while (ao2_trylock(pvt)) {
-        CHANNEL_DEADLOCK_AVOIDANCE(channel);
-    }
-}
-
-void cpvt_unlock(struct cpvt* const cpvt)
+int cpvt_unlock(struct cpvt* const cpvt)
 {
     if (!cpvt) {
-        return;
+        return -1;
     }
-    pvt_unlock(cpvt->pvt);
+    return pvt_unlock(cpvt->pvt);
 }
 
-void* cpvt_get_buffer(struct cpvt* const cpvt) { return cpvt->buffer + AST_FRIENDLY_OFFSET; }
+void* cpvt_get_buffer(struct cpvt* const cpvt) { return cpvt->buffer; }
 
 struct ast_frame* cpvt_prepare_voice_frame(struct cpvt* const cpvt, void* const buf, int samples, const struct ast_format* const fmt)
 {
@@ -424,7 +409,6 @@ struct ast_frame* cpvt_prepare_voice_frame(struct cpvt* const cpvt, void* const 
     f->samples         = samples;
     f->datalen         = samples * sizeof(int16_t);
     f->data.ptr        = buf;
-    f->offset          = AST_FRIENDLY_OFFSET;
     f->src             = AST_MODULE;
 
     ast_frame_byteswap_le(f);

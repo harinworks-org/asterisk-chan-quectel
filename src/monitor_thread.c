@@ -349,7 +349,7 @@ void pvt_monitor_stop(struct pvt* pvt)
 
     {
         const pthread_t id = pvt->monitor_thread;
-        SCOPED_LOCK(pvt_lock, pvt, ao2_unlock, ao2_lock);  // scoped UNlock
+        SCOPED_LOCK(pvtl, pvt, ao2_unlock, ao2_lock);  // scoped UNlock
         pthread_join(id, NULL);
     }
 

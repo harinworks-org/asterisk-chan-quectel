@@ -302,7 +302,7 @@ static void pvt_finish(struct pvt* const pvt)
 
 static int pvt_finish_cb(void* obj, attribute_unused void* arg, attribute_unused int flags)
 {
-    SCOPED_AO2LOCK(pvt_lock, obj);
+    SCOPED_AO2LOCK(pvtl, obj);
     struct pvt* const pvt = obj;
     pvt_monitor_stop(pvt);
     at_queue_flush(pvt);
@@ -311,7 +311,7 @@ static int pvt_finish_cb(void* obj, attribute_unused void* arg, attribute_unused
 
 static void pvt_destroy(void* obj)
 {
-    SCOPED_AO2LOCK(pvt_lock, obj);
+    SCOPED_AO2LOCK(pvtl, obj);
     struct pvt* const pvt = (struct pvt* const)obj;
     ast_string_field_free_memory(pvt);
 }
@@ -483,7 +483,7 @@ void pvt_on_create_1st_channel(struct pvt* pvt)
 {
     const struct ast_format* const fmt = pvt_get_audio_format(pvt);
     const size_t silence_buf_size      = 2u * pvt_get_audio_frame_size(PTIME_PLAYBACK, fmt);
-    pvt->silence_buf                   = ast_calloc(1, silence_buf_size + AST_FRIENDLY_OFFSET);
+    pvt->silence_buf                   = ast_calloc(1, silence_buf_size);
 
     if (CONF_SHARED(pvt, multiparty)) {
         if (CONF_UNIQ(pvt, uac) > TRIBOOL_FALSE) {
@@ -635,13 +635,21 @@ static int can_send_message(struct pvt* pvt, attribute_unused unsigned int opts)
     return 1;
 }
 
-void pvt_unlock(struct pvt* const pvt)
+int pvt_lock(struct pvt* const pvt)
 {
     if (!pvt) {
-        return;
+        return -1;
+    }
+    return AO2_REF_AND_LOCK(pvt);
+}
+
+int pvt_unlock(struct pvt* const pvt)
+{
+    if (!pvt) {
+        return -1;
     }
 
-    AO2_UNLOCK_AND_UNREF(pvt);
+    return AO2_UNLOCK_AND_UNREF(pvt);
 }
 
 int pvt_taskproc_trylock_and_execute(struct pvt* pvt, void (*task_exe)(struct pvt* pvt), const char* task_name)
@@ -757,7 +765,7 @@ void* get_rr_next(struct ao2_iterator* i, const struct pvt_test_fn* const fn, vo
         int last_used_found = 0;
         while ((obj = ao2_iterator_next(i))) {
             if (last_used_found) {
-                SCOPED_AO2LOCK(pvt_lock, obj);
+                SCOPED_AO2LOCK(pvtl, obj);
                 if (call_pvt_test_fn(fn, obj)) {
                     break;
                 }
@@ -782,7 +790,7 @@ void* get_rr_next(struct ao2_iterator* i, const struct pvt_test_fn* const fn, vo
         }
 
         {
-            SCOPED_AO2LOCK(pvt_lock, obj);
+            SCOPED_AO2LOCK(pvtl, obj);
             if (call_pvt_test_fn(fn, obj)) {
                 break;
             }
@@ -1322,7 +1330,7 @@ int pvt_set_act(struct pvt* pvt, int act)
 
 static int pvt_mark_must_remove_cb(void* obj, attribute_unused void* arg, attribute_unused int flags)
 {
-    SCOPED_AO2LOCK(pvt_lock, obj);
+    SCOPED_AO2LOCK(pvtl, obj);
     struct pvt* pvt  = obj;
     pvt->must_remove = 1;
     return 0;
@@ -1494,7 +1502,7 @@ size_t pvt_get_audio_frame_size(unsigned int ptime, const struct ast_format* con
 
 #endif
 
-void* pvt_get_silence_buffer(struct pvt* const pvt) { return pvt->silence_buf + AST_FRIENDLY_OFFSET; }
+void* pvt_get_silence_buffer(struct pvt* const pvt) { return pvt->silence_buf; }
 
 int pvt_direct_write(struct pvt* pvt, const char* buf, size_t count)
 {
