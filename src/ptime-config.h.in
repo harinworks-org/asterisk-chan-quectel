@@ -8,6 +8,7 @@
 #define PTIME_CAPTURE 20
 #define PTIME_PLAYBACK 20
 #define PTIME_BUFFER 1000
+#define PTIME_EXTRA 10
 
 #cmakedefine01 PTIME_USE_DEFAULT
 

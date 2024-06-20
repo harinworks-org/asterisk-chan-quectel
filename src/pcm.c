@@ -60,7 +60,7 @@ static snd_pcm_uframes_t adjust_uframes(snd_pcm_uframes_t ptime, unsigned int ra
 
 static snd_pcm_uframes_t adjust_start_threshold(snd_pcm_uframes_t ptime)
 {
-    static const size_t PTIME_MIN_START_THRESHOLD = 100u;
+    static const size_t PTIME_MIN_START_THRESHOLD = 80u;
     static const size_t PTIME_MAX_START_THRESHOLD = 250u;
 
     if (ptime < PTIME_MIN_START_THRESHOLD) {
@@ -99,10 +99,13 @@ int pcm_init(const char* dev, snd_pcm_stream_t stream, const struct ast_format* 
 #else
     const size_t ptime = (stream == SND_PCM_STREAM_CAPTURE) ? PTIME_CAPTURE : PTIME_PLAYBACK;
 #endif
-    snd_pcm_uframes_t period_size     = adjust_uframes(ptime + 10, rate);
-    snd_pcm_uframes_t buffer_size     = adjust_uframes(PTIME_BUFFER, rate);
-    snd_pcm_uframes_t start_threshold = adjust_uframes(adjust_start_threshold(ptime * 2), rate);
-    snd_pcm_uframes_t stop_threshold  = buffer_size - period_size;
+    const size_t ptime_ex             = ptime + PTIME_EXTRA;
+    unsigned int period_time          = ptime_ex * 1000;  // us
+    int period_dir                    = 0;
+    unsigned int buffer_time          = PTIME_BUFFER * 1000;  // us
+    int buffer_dir                    = 0;
+    snd_pcm_uframes_t start_threshold = adjust_uframes(adjust_start_threshold(ptime_ex * 2), rate);
+    snd_pcm_uframes_t stop_threshold  = adjust_uframes(PTIME_BUFFER - (2 * ptime_ex), rate);
     snd_pcm_uframes_t boundary        = 0u;
     unsigned int hwrate               = rate;
     unsigned int channels             = 1;
@@ -145,15 +148,15 @@ int pcm_init(const char* dev, snd_pcm_stream_t stream, const struct ast_format* 
         goto alsa_fail;
     }
 
-    res = snd_pcm_hw_params_set_period_size_near(handle, hwparams, &period_size, NULL);
+    res = snd_pcm_hw_params_set_period_time_near(handle, hwparams, &period_time, &period_dir);
     if (res < 0) {
-        ast_log(LOG_ERROR, "[ALSA][%s] HW Period size (%lu frames) is bad: %s\n", stream_str, period_size, snd_strerror(res));
+        ast_log(LOG_ERROR, "[ALSA][%s] HW Period time (%u us) is bad: %s\n", stream_str, period_time, snd_strerror(res));
         goto alsa_fail;
     }
 
-    res = snd_pcm_hw_params_set_buffer_size_near(handle, hwparams, &buffer_size);
+    res = snd_pcm_hw_params_set_buffer_time_near(handle, hwparams, &buffer_time, &buffer_dir);
     if (res < 0) {
-        ast_log(LOG_ERROR, "[ALSA][%s] HW Problem setting buffer size of %lu: %s\n", stream_str, buffer_size, snd_strerror(res));
+        ast_log(LOG_ERROR, "[ALSA][%s] HW Problem setting buffer time of %u: %s\n", stream_str, buffer_time, snd_strerror(res));
         goto alsa_fail;
     }
 
@@ -185,14 +188,14 @@ int pcm_init(const char* dev, snd_pcm_stream_t stream, const struct ast_format* 
 
     ast_debug(1, "[ALSA][%s] Rate: %u\n", stream_str, hw_params_get_rate(hwparams));
 
-    res = snd_pcm_hw_params_get_period_size(hwparams, &period_size, NULL);
+    res = snd_pcm_hw_params_get_period_time(hwparams, &period_time, &period_dir);
     if (res >= 0) {
-        ast_debug(1, "[ALSA][%s] Period size: %lu\n", stream_str, period_size);
+        ast_debug(1, "[ALSA][%s] Period time: %u, dir:%d\n", stream_str, period_time / 1000, period_dir);
     }
 
-    res = snd_pcm_hw_params_get_buffer_size(hwparams, &buffer_size);
+    res = snd_pcm_hw_params_get_buffer_time(hwparams, &buffer_time, &buffer_dir);
     if (res >= 0) {
-        ast_debug(1, "[ALSA][%s] Buffer size: %lu\n", stream_str, buffer_size);
+        ast_debug(1, "[ALSA][%s] Buffer time: %u, dir:%d\n", stream_str, buffer_time / 1000, buffer_dir);
     }
 
     swparams = ast_alloca(snd_pcm_sw_params_sizeof());
@@ -211,15 +214,13 @@ int pcm_init(const char* dev, snd_pcm_stream_t stream, const struct ast_format* 
     ast_debug(3, "[ALSA][%s] Boundary: %lu\n", stream_str, boundary);
 
     if (stream == SND_PCM_STREAM_PLAYBACK) {
-        ast_debug(2, "[ALSA][%s] Start threshold: %lu\n", stream_str, start_threshold);
+        ast_debug(3, "[ALSA][%s] Thresholds: %lu %lu\n", stream_str, start_threshold, stop_threshold);
         res = snd_pcm_sw_params_set_start_threshold(handle, swparams, start_threshold);
-
         if (res < 0) {
             ast_log(LOG_ERROR, "[ALSA][%s] SW Couldn't set start threshold: %s\n", stream_str, snd_strerror(res));
             goto alsa_fail;
         }
 
-        ast_debug(2, "[ALSA][%s] Stop threshold: %lu, free: %lu\n", stream_str, stop_threshold, buffer_size - stop_threshold);
         res = snd_pcm_sw_params_set_stop_threshold(handle, swparams, stop_threshold);
         if (res < 0) {
             ast_log(LOG_ERROR, "[ALSA][%s] SW Couldn't set stop threshold: %s\n", stream_str, snd_strerror(res));
