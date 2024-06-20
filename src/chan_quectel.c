@@ -95,7 +95,7 @@ static int soundcard_init(struct pvt* pvt)
         return -1;
     }
 
-    ast_verb(2, "[%s][ALSA] Sound card '%s' initialized\n", PVT_ID(pvt), CONF_UNIQ(pvt, alsadev));
+    ast_verb(2, "[%s] Sound card '%s' initialized\n", PVT_ID(pvt), CONF_UNIQ(pvt, alsadev));
     return 0;
 }
 
@@ -234,7 +234,7 @@ static void pvt_start(struct pvt* const pvt)
 
     pvt_monitor_stop(pvt);
 
-    ast_verb(3, "[%s] Trying to connect data port %s...\n", PVT_ID(pvt), CONF_UNIQ(pvt, alsadev));
+    ast_verb(3, "[%s] Opening data port: %s\n", PVT_ID(pvt), CONF_UNIQ(pvt, data_tty));
     pvt->data_fd = tty_open(CONF_UNIQ(pvt, data_tty), (CONF_UNIQ(pvt, uac) == TRIBOOL_NONE) ? 2 : 0);
     if (pvt->data_fd < 0) {
         return;
@@ -247,7 +247,7 @@ static void pvt_start(struct pvt* const pvt)
         }
     } else {
         // TODO: delay until device activate voice call or at pvt_on_create_1st_channel()
-        ast_verb(3, "[%s] Trying to open audio port %s...\n", PVT_ID(pvt), CONF_UNIQ(pvt, audio_tty));
+        ast_verb(3, "[%s] Opening audio port: %s\n", PVT_ID(pvt), CONF_UNIQ(pvt, audio_tty));
         pvt->audio_fd = tty_open(CONF_UNIQ(pvt, audio_tty), pvt->is_simcom);
         if (pvt->audio_fd < 0) {
             goto cleanup_datafd;
@@ -282,7 +282,7 @@ static void pvt_start(struct pvt* const pvt)
 
     pvt->connected     = 1;
     pvt->current_state = DEV_STATE_STARTED;
-    ast_verb(3, "[%s] Connected, initializing...\n", PVT_ID(pvt));
+    ast_verb(3, "[%s] Ports opened, initializing...\n", PVT_ID(pvt));
     return;
 
 cleanup_audiofd:

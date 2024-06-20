@@ -869,7 +869,6 @@ static int channel_devicestate(const char* data)
     const char* const device = ast_strdupa(S_OR(data, ""));
     ast_debug(1, "[%s] Checking device state\n", device);
 
-
     RAII_VAR(struct pvt* const, pvt, pvt_find_by_ext(device), pvt_unlock);
 
     if (!pvt) {

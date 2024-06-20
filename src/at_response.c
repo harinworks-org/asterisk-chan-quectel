@@ -2097,8 +2097,8 @@ static int at_response_qnwinfo(struct pvt* const pvt, const struct ast_str* cons
     pvt->operator= oper;
     ast_string_field_set(pvt, band, band);
 
-    ast_verb(1, "[%s] Registered PLMN: %d\n", PVT_ID(pvt), oper);
-    ast_verb(1, "[%s] Band: %s\n", PVT_ID(pvt), band);
+    ast_verb(2, "[%s] Registered PLMN: %d\n", PVT_ID(pvt), oper);
+    ast_verb(2, "[%s] Band: %s\n", PVT_ID(pvt), band);
     return 0;
 }
 
@@ -2467,7 +2467,7 @@ static void at_response_qrxgain(struct pvt* const pvt, const struct ast_str* con
     }
 
     RAII_VAR(struct ast_str*, sgain, gain2str(gain), ast_free);
-    ast_verb(1, "[%s] RX Gain: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
+    ast_verb(2, "[%s] RX Gain: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
 }
 
 static void at_response_qmic(struct pvt* const pvt, const struct ast_str* const response)
@@ -2480,7 +2480,7 @@ static void at_response_qmic(struct pvt* const pvt, const struct ast_str* const 
     }
 
     RAII_VAR(struct ast_str*, sgain, gain2str(gain), ast_free);
-    ast_verb(1, "[%s] Microphone Gain: %s [%d], %d\n", PVT_ID(pvt), ast_str_buffer(sgain), gain, dgain);
+    ast_verb(2, "[%s] Microphone Gain: %s [%d], %d\n", PVT_ID(pvt), ast_str_buffer(sgain), gain, dgain);
 }
 
 static void at_response_cmicgain(struct pvt* const pvt, const struct ast_str* const response)
@@ -2493,7 +2493,7 @@ static void at_response_cmicgain(struct pvt* const pvt, const struct ast_str* co
     }
 
     RAII_VAR(struct ast_str*, sgain, gain2str_simcom(gain), ast_free);
-    ast_verb(1, "[%s] RX Gain: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
+    ast_verb(2, "[%s] RX Gain: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
 }
 
 static void at_response_coutgain(struct pvt* const pvt, const struct ast_str* const response)
@@ -2506,7 +2506,7 @@ static void at_response_coutgain(struct pvt* const pvt, const struct ast_str* co
     }
 
     RAII_VAR(struct ast_str*, sgain, gain2str_simcom(gain), ast_free);
-    ast_verb(1, "[%s] TX Gain: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
+    ast_verb(2, "[%s] TX Gain: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
 }
 
 static void at_response_crxvol(struct pvt* const pvt, const struct ast_str* const response)
@@ -2519,7 +2519,7 @@ static void at_response_crxvol(struct pvt* const pvt, const struct ast_str* cons
     }
 
     RAII_VAR(struct ast_str*, sgain, gain2str(gain), ast_free);
-    ast_verb(1, "[%s] RX Volume: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
+    ast_verb(2, "[%s] RX Volume: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
 }
 
 static void at_response_ctxvol(struct pvt* const pvt, const struct ast_str* const response)
@@ -2532,7 +2532,7 @@ static void at_response_ctxvol(struct pvt* const pvt, const struct ast_str* cons
     }
 
     RAII_VAR(struct ast_str*, sgain, gain2str(gain), ast_free);
-    ast_verb(1, "[%s] Microphone Volume: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
+    ast_verb(2, "[%s] Microphone Gain: %s [%d]\n", PVT_ID(pvt), ast_str_buffer(sgain), gain);
 }
 
 static int at_response_qaudloop(struct pvt* const pvt, const struct ast_str* const response)
