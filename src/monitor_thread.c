@@ -116,17 +116,17 @@ static int pcm_show_playback_state_taskproc(void* tpdata) { return PVT_TASKPROC_
 
 static int pcm_show_capture_state_taskproc(void* tpdata) { return PVT_TASKPROC_TRYLOCK_AND_EXECUTE(tpdata, pcm_show_capture_state); }
 
-static void push_pcm_state_taskprocs(struct ast_taskprocessor* tps, struct pvt* const pvt)
+static void push_pcm_state_taskprocs(struct ast_threadpool* threadpool, struct pvt* const pvt)
 {
-    if (ast_taskprocessor_push(tps, pcm_show_playback_state_taskproc, pvt)) {
+    if (ast_threadpool_push(threadpool, pcm_show_playback_state_taskproc, pvt)) {
         ast_debug(5, "[%s] Unable to show ALSA playback state\n", PVT_ID(pvt));
     }
-    if (ast_taskprocessor_push(tps, pcm_show_capture_state_taskproc, pvt)) {
+    if (ast_threadpool_push(threadpool, pcm_show_capture_state_taskproc, pvt)) {
         ast_debug(5, "[%s] Unable to show ALSA capture state\n", PVT_ID(pvt));
     }
 }
 
-static int check_dev_status(struct pvt* const pvt, struct ast_taskprocessor* tps)
+static int check_dev_status(struct pvt* const pvt, struct ast_threadpool* threadpool)
 {
     int err;
     if (tty_status(pvt->data_fd, &err)) {
@@ -147,11 +147,11 @@ static int check_dev_status(struct pvt* const pvt, struct ast_taskprocessor* tps
             break;
 
         case TRIBOOL_TRUE:
-            push_pcm_state_taskprocs(tps, pvt);
+            push_pcm_state_taskprocs(threadpool, pvt);
             break;
 
         case TRIBOOL_NONE:
-            push_pcm_state_taskprocs(tps, pvt);
+            push_pcm_state_taskprocs(threadpool, pvt);
 
             if (pcm_status(pvt->ocard, pvt->icard)) {
                 ast_log(LOG_ERROR, "[%s][AUDIO][ALSA] Lost connection\n", PVT_ID(pvt));
@@ -175,7 +175,7 @@ static int at_wait_n(int* fds, int n, int* ms)
     return outfd;
 }
 
-static void monitor_threadproc_pvt(struct pvt* const pvt)
+static void pvt_monitor_threadproc(struct pvt* const pvt)
 {
     static const size_t RINGBUFFER_SIZE = 2 * 1024;
 
@@ -197,21 +197,20 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
         goto e_cleanup;
     }
 
-    /* 4 reduce locking time make copy of this readonly fields */
     int fd[2] = {pvt->data_fd, pvt->monitor_thread_event};
-    at_clean_data(dev, fd[0], &rb);
 
-    /* schedule initilization  */
+    /* schedule initilization */
     if (at_enqueue_initialization(&pvt->sys_chan)) {
         ast_log(LOG_ERROR, "[%s] Error adding initialization commands to queue\n", dev);
         goto e_cleanup;
     }
 
     ao2_unlock(pvt);
+    at_clean_data(dev, fd[0], &rb);
 
     int read_result = 0;
     while (1) {
-        if (ast_taskprocessor_push(tps, handle_expired_reports_taskproc, pvt)) {
+        if (ast_threadpool_push(gpublic->threadpool, handle_expired_reports_taskproc, pvt)) {
             ast_debug(5, "[%s] Unable to handle exprired reports\n", dev);
         }
 
@@ -222,13 +221,17 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
                 eventfd_reset(pvt->monitor_thread_event);
                 goto e_restart;
             } else if (w != fd[0]) {
+                if (check_taskprocessor(tps, dev)) {
+                    goto e_restart;
+                }
+
                 if (ast_taskprocessor_push(tps, at_enqueue_ping_taskproc, pvt)) {
                     ast_debug(5, "[%s] Unable to handle timeout\n", dev);
                 }
                 continue;
             }
         } else {  // pvt locked
-            if (check_dev_status(pvt, tps)) {
+            if (check_dev_status(pvt, gpublic->threadpool)) {
                 goto e_cleanup;
             }
 
@@ -243,7 +246,7 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
             if (is_cmd_timeout) {
                 if (t <= 0) {
                     if (check_taskprocessor(tps, dev)) {
-                        eventfd_signal(pvt->monitor_thread_event);
+                        goto e_restart;
                     }
 
                     if (ast_taskprocessor_push(tps, cmd_timeout_taskproc, pvt)) {
@@ -263,7 +266,6 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
                     if (w == fd[1]) {
                         eventfd_reset(pvt->monitor_thread_event);
                         goto e_restart;
-
                     } else if (w != fd[0]) {
                         if (ast_taskprocessor_push(tps, cmd_timeout_taskproc, pvt)) {
                             ast_debug(5, "[%s] Unable to handle timeout\n", dev);
@@ -280,7 +282,6 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
 
                 } else if (w != fd[0]) {
                     if (check_taskprocessor(tps, dev)) {
-                        eventfd_signal(pvt->monitor_thread_event);
                         goto e_restart;
                     }
 
@@ -325,15 +326,17 @@ static void monitor_threadproc_pvt(struct pvt* const pvt)
         }
     }
 
-    ao2_unlock(pvt);
-
 e_cleanup:
     if (!pvt->initialized) {
         // TODO: send monitor event
         ast_verb(3, "[%s] Error initializing channel\n", dev);
     }
+    pvt_disconnect(pvt);
+    ao2_unlock(pvt);
+    return;
 
 e_restart:
+    ao2_lock(pvt);
     pvt_disconnect(pvt);
     ao2_unlock(pvt);
 }
@@ -341,7 +344,7 @@ e_restart:
 static void* monitor_threadproc(void* _pvt)
 {
     struct pvt* const pvt = _pvt;
-    monitor_threadproc_pvt(pvt);
+    pvt_monitor_threadproc(pvt);
     ao2_ref(pvt, -1);
     return NULL;
 }

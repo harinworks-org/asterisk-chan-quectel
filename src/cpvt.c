@@ -225,6 +225,8 @@ int cpvt_control(const struct cpvt* const cpvt, enum ast_control_frame_type cont
         return -1;
     }
 
+    struct pvt* const pvt = cpvt->pvt;
+    SCOPED_LOCK(pvtl, pvt, ao2_unlock, ao2_lock);  // scoped UNlock
     return ast_queue_control(cpvt->channel, control);
 }
 
