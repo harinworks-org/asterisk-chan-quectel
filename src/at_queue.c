@@ -47,18 +47,18 @@ static void at_queue_remove(struct pvt* const pvt)
         return;
     }
 
-    PVT_STATE(pvt, at_tasks)--;
-    PVT_STATE(pvt, at_cmds) -= task->cmdsno - task->cindex;
+    ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, at_tasks), 1);
+    ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, at_cmds), task->cmdsno - task->cindex);
 
     if (task->cmdsno == 1u) {
         ast_debug(4, "[%s][%s] \xE2\x86\xB3 [%s] tasks:%lu \n", PVT_ID(pvt), at_cmd2str(task->cmds[0].cmd), at_res2str(task->cmds[0].res),
-                  (unsigned long)PVT_STATE(pvt, at_tasks));
+                  (unsigned long)ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_tasks)));
     } else if (task->cindex >= task->cmdsno) {
         ast_debug(4, "[%s][%s] \xE2\x86\xB3 [%s] cmds:%u tasks:%lu\n", PVT_ID(pvt), at_cmd2str(task->cmds[0].cmd), at_res2str(task->cmds[0].res), task->cmdsno,
-                  (unsigned long)PVT_STATE(pvt, at_tasks));
+                  (unsigned long)ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_tasks)));
     } else {
         ast_debug(3, "[%s][%s] \xE2\x86\xB3 [%s] cmds:%u/%u tasks:%lu\n", PVT_ID(pvt), at_cmd2str(task->cmds[0].cmd), at_res2str(task->cmds[0].res),
-                  task->cindex, task->cmdsno, (unsigned long)PVT_STATE(pvt, at_tasks));
+                  task->cindex, task->cmdsno, (unsigned long)ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_tasks)));
     }
 
     at_queue_free(task);
@@ -92,8 +92,8 @@ at_queue_task_t* at_queue_add(struct cpvt* cpvt, const at_queue_cmd_t* cmds, uns
         AST_LIST_INSERT_TAIL(&pvt->at_queue, e, entry);
     }
 
-    PVT_STATE(pvt, at_tasks)++;
-    PVT_STATE(pvt, at_cmds) += cmdsno;
+    ast_atomic_fetchadd_uint32(&PVT_STATE(pvt, at_tasks), 1);
+    ast_atomic_fetchadd_uint32(&PVT_STATE(pvt, at_cmds), cmdsno);
 
     if (e->cmdsno == 1u) {
         ast_debug(4, "[%s][%s] \xE2\x86\xB5 [%s][%s] %s%s\n", PVT_ID(pvt), at_cmd2str(e->cmds[0].cmd), at_res2str(e->cmds[0].res),
@@ -114,8 +114,8 @@ static void at_queue_remove_cmd(struct pvt* pvt, at_res_t res)
     }
 
     if (task->at_once) {
-        task->cindex             = task->cmdsno;
-        PVT_STATE(pvt, at_cmds) -= task->cmdsno;
+        task->cindex = task->cmdsno;
+        ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, at_cmds), task->cmdsno);
 
         if (task->cmds[0].res == res || (task->cmds[0].flags & ATQ_CMD_FLAG_IGNORE) || res == RES_TIMEOUT) {
             at_queue_remove(pvt);
@@ -125,7 +125,7 @@ static void at_queue_remove_cmd(struct pvt* pvt, at_res_t res)
         const unsigned index = task->cindex;
 
         task->cindex++;
-        PVT_STATE(pvt, at_cmds)--;
+        ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, at_cmds), -1);
         if (task->cmds[index].res == res) {
             ast_debug(6, "[%s][%s] \xE2\x8A\x9F result:[%s] cmd:%u/%u flags:%02x\n", PVT_ID(pvt), at_cmd2str(task->cmds[index].cmd), at_res2str(res),
                       task->cindex, task->cmdsno, task->cmds[index].flags);
@@ -145,8 +145,8 @@ static void at_queue_remove_task_at_once(struct pvt* const pvt)
     at_queue_task_t* const task = AST_LIST_FIRST(&pvt->at_queue);
 
     if (task && task->at_once) {
-        task->cindex             = task->cmdsno;
-        PVT_STATE(pvt, at_cmds) -= task->cmdsno;
+        task->cindex = task->cmdsno;
+        ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, at_cmds), 1);
 
         if (!(task->cmds[0].flags & ATQ_CMD_FLAG_IGNORE)) {
             at_queue_remove(pvt);

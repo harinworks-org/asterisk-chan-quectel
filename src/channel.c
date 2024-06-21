@@ -266,7 +266,7 @@ static int channel_call(struct ast_channel* channel, const char* dest, attribute
         clir = -1;
     }
 
-    PVT_STAT(pvt, out_calls)++;
+    ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, out_calls), 1);
     if (at_enqueue_dial(cpvt, dest_num, clir)) {
         ast_log(LOG_ERROR, "[%s] Error sending ATD command\n", PVT_ID(pvt));
         return -1;
@@ -414,7 +414,7 @@ static void timing_write_tty(struct pvt* pvt, size_t frame_size)
         mixb_read_upd(&pvt->write_mixb, frame_size);
         change_audio_endianness_to_le(iov, iovcnt);
     } else if (used > 0) {
-        PVT_STAT(pvt, write_tframes)++;
+        ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_tframes), 1);
         msg = "[%s] write truncated frame\n";
 
         iovcnt = mixb_read_all_iov(&pvt->write_mixb, iov);
@@ -426,7 +426,7 @@ static void timing_write_tty(struct pvt* pvt, size_t frame_size)
         iovcnt++;
         change_audio_endianness_to_le(iov, iovcnt);
     } else {
-        PVT_STAT(pvt, write_sframes)++;
+        ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_sframes), 1);
         msg = "[%s] write silence\n";
 
         iov[0].iov_base = pvt_get_silence_buffer(pvt);
@@ -439,7 +439,7 @@ static void timing_write_tty(struct pvt* pvt, size_t frame_size)
     }
 
     if (iov_write(pvt, pvt->audio_fd, iov, iovcnt) >= 0) {
-        PVT_STAT(pvt, write_frames)++;
+        ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_frames), 1);
     }
 }
 
@@ -488,10 +488,10 @@ static struct ast_frame* channel_read_tty(struct cpvt* cpvt, struct pvt* pvt, si
             write_conference(pvt, buf, res);
         }
 
-        PVT_STAT(pvt, a_read_bytes) += res;
-        PVT_STAT(pvt, read_frames)++;
+        ast_atomic_fetchadd_uint64(&PVT_STAT(pvt, a_read_bytes), res);
+        ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, read_frames), 1);
         if (res < frame_size) {
-            PVT_STAT(pvt, read_sframes)++;
+            ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, read_sframes), 1);
         }
     }
 
@@ -566,10 +566,10 @@ static struct ast_frame* channel_read_uac(struct cpvt* cpvt, struct pvt* pvt, si
                         write_conference(pvt, buf, res);
                     }
 
-                    PVT_STAT(pvt, a_read_bytes) += res * sizeof(int16_t);
-                    PVT_STAT(pvt, read_frames)++;
+                    ast_atomic_fetchadd_uint64(&PVT_STAT(pvt, a_read_bytes), res * sizeof(int16_t));
+                    ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, read_frames), 1);
                     if (res < frames) {
-                        PVT_STAT(pvt, read_sframes)++;
+                        ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, read_sframes), 1);
                     }
                 }
 
@@ -689,8 +689,8 @@ static int channel_write_tty(struct ast_channel* channel, struct ast_frame* f, s
         if (count < (size_t)f->datalen) {
             mixb_read_upd(&pvt->write_mixb, f->datalen - count);
 
-            PVT_STAT(pvt, write_rb_overflow_bytes) += f->datalen - count;
-            PVT_STAT(pvt, write_rb_overflow)++;
+            ast_atomic_fetchadd_uint64(&PVT_STAT(pvt, write_rb_overflow_bytes), f->datalen - count);
+            ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_rb_overflow), 1);
         }
 
         mixb_write(&pvt->write_mixb, &cpvt->mixstream, f->data.ptr, f->datalen);
@@ -709,10 +709,10 @@ static int channel_write_tty(struct ast_channel* channel, struct ast_frame* f, s
         const ssize_t res      = iov_write(pvt, pvt->audio_fd, &iov, 1);
 
         if (res >= 0) {
-            PVT_STAT(pvt, write_frames)  += 1;
-            PVT_STAT(pvt, a_write_bytes) += res;
+            ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_frames), 1);
+            ast_atomic_fetchadd_uint64(&PVT_STAT(pvt, a_write_bytes), res);
             if (res != f->datalen) {
-                PVT_STAT(pvt, write_tframes)++;
+                ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_tframes), 1);
             }
         }
     }
@@ -779,10 +779,10 @@ static int channel_write_uac(struct ast_channel* attribute_unused(channel), stru
 
         default:
             if (res >= 0) {
-                PVT_STAT(pvt, write_frames)  += 1;
-                PVT_STAT(pvt, a_write_bytes) += res * sizeof(int16_t);
+                ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_frames), 1);
+                ast_atomic_fetchadd_uint64(&PVT_STAT(pvt, a_write_bytes), res * sizeof(int16_t));
                 if (res != samples) {
-                    PVT_STAT(pvt, write_tframes)++;
+                    ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_tframes), 1);
                     ast_log(LOG_WARNING, "[%s][ALSA][PLAYBACK] Write: %d/%d\n", PVT_ID(pvt), res, samples);
                 }
             }
@@ -827,7 +827,7 @@ static int channel_write(struct ast_channel* channel, struct ast_frame* f)
 
     if (f->datalen < frame_size) {
         ast_debug(8, "[%s] Short voice frame: %d/%d, samples:%d\n", PVT_ID(pvt), f->datalen, (int)frame_size, f->samples);
-        PVT_STAT(pvt, write_tframes)++;
+        ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, write_tframes), 1);
     } else if (f->datalen > frame_size) {
         ast_debug(8, "[%s] Large voice frame: %d/%d, samples: %d\n", PVT_ID(pvt), f->datalen, (int)frame_size, f->samples);
     }

@@ -224,14 +224,14 @@ static char* cli_show_device_state(struct ast_cli_entry* e, int cmd, struct ast_
             format_ast_tm(&pvt->module_time, mt);
             ast_cli(a->fd, "  Module time             : %s\n", ast_str_buffer(mt));
         }
-        ast_cli(a->fd, "  Tasks in queue          : %u\n", PVT_STATE(pvt, at_tasks));
-        ast_cli(a->fd, "  Commands in queue       : %u\n", PVT_STATE(pvt, at_cmds));
+        ast_cli(a->fd, "  Tasks in queue          : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_tasks)));
+        ast_cli(a->fd, "  Commands in queue       : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_cmds)));
         ast_cli(a->fd, "  Call Waiting            : %s\n", AST_CLI_ONOFF(pvt->has_call_waiting));
         ast_cli(a->fd, "  Current device state    : %s\n", dev_state2str_capitalized(pvt->current_state));
         ast_cli(a->fd, "  Desired device state    : %s\n", dev_state2str_capitalized(pvt->desired_state));
         ast_cli(a->fd, "  When change state       : %s\n", restate2str_msg(pvt->restart_time));
 
-        ast_cli(a->fd, "  Calls/Channels          : %u\n", PVT_STATE(pvt, chansno));
+        ast_cli(a->fd, "  Calls/Channels          : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, chansno)));
         ast_cli(a->fd, "    Active                : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE]));
         ast_cli(a->fd, "    Held                  : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD]));
         ast_cli(a->fd, "    Dialing               : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_DIALING]));
@@ -249,21 +249,6 @@ static char* cli_show_device_state(struct ast_cli_entry* e, int cmd, struct ast_
 }
 
 CLI_ALIASES(cli_show_device_state, "show device state", "show device state <device>", "Shows the state of device")
-
-#/* */
-
-static int32_t getACD(uint32_t calls, uint32_t duration)
-{
-    int32_t acd;
-
-    if (calls) {
-        acd = duration / calls;
-    } else {
-        acd = -1;
-    }
-
-    return acd;
-}
 
 #/* */
 
@@ -299,59 +284,32 @@ static char* cli_show_device_statistics(struct ast_cli_entry* e, int cmd, struct
     if (pvt) {
         ast_cli(a->fd, "-------------- Statistics -------------\n");
         ast_cli(a->fd, "  Device                      : %s\n", PVT_ID(pvt));
-        ast_cli(a->fd, "  Queue tasks                 : %u\n", PVT_STAT(pvt, at_tasks));
-        ast_cli(a->fd, "  Queue commands              : %u\n", PVT_STAT(pvt, at_cmds));
-        ast_cli(a->fd, "  Responses                   : %u\n", PVT_STAT(pvt, at_responses));
-        ast_cli(a->fd, "  Bytes of read responses     : %u\n", PVT_STAT(pvt, d_read_bytes));
-        ast_cli(a->fd, "  Bytes of written commands   : %u\n", PVT_STAT(pvt, d_write_bytes));
-        ast_cli(a->fd, "  Bytes of read audio         : %llu\n", (unsigned long long int)PVT_STAT(pvt, a_read_bytes));
-        ast_cli(a->fd, "  Bytes of written audio      : %llu\n", (unsigned long long int)PVT_STAT(pvt, a_write_bytes));
-        ast_cli(a->fd, "  Readed frames               : %u\n", PVT_STAT(pvt, read_frames));
-        ast_cli(a->fd, "  Readed short frames         : %u\n", PVT_STAT(pvt, read_sframes));
-        ast_cli(a->fd, "  Wrote frames                : %u\n", PVT_STAT(pvt, write_frames));
-        ast_cli(a->fd, "  Wrote short frames          : %u\n", PVT_STAT(pvt, write_tframes));
-        ast_cli(a->fd, "  Wrote silence frames        : %u\n", PVT_STAT(pvt, write_sframes));
-        ast_cli(a->fd, "  Write buffer overflow bytes : %llu\n", (unsigned long long int)PVT_STAT(pvt, write_rb_overflow_bytes));
-        ast_cli(a->fd, "  Write buffer overflow count : %u\n", PVT_STAT(pvt, write_rb_overflow));
-        ast_cli(a->fd, "  Incoming calls              : %u\n", PVT_STAT(pvt, in_calls));
-        ast_cli(a->fd, "  Waiting calls               : %u\n", PVT_STAT(pvt, cw_calls));
-        ast_cli(a->fd, "  Handled input calls         : %u\n", PVT_STAT(pvt, in_calls_handled));
-        ast_cli(a->fd, "  Fails to PBX run            : %u\n", PVT_STAT(pvt, in_pbx_fails));
-        ast_cli(a->fd, "  Attempts to outgoing calls  : %u\n", PVT_STAT(pvt, out_calls));
-        ast_cli(a->fd, "  Answered outgoing calls     : %u\n", PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING]));
-        ast_cli(a->fd, "  Answered incoming calls     : %u\n", PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING]));
-        ast_cli(a->fd, "  Seconds of outgoing calls   : %u\n", PVT_STAT(pvt, calls_duration[CALL_DIR_OUTGOING]));
-        ast_cli(a->fd, "  Seconds of incoming calls   : %u\n", PVT_STAT(pvt, calls_duration[CALL_DIR_INCOMING]));
-        ast_cli(a->fd, "  ACD for incoming calls      : %d\n",
-                getACD(PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING]), PVT_STAT(pvt, calls_duration[CALL_DIR_INCOMING])));
-        ast_cli(a->fd, "  ACD for outgoing calls      : %d\n",
-                getACD(PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING]), PVT_STAT(pvt, calls_duration[CALL_DIR_OUTGOING])));
-        /*
-                ast_cli (a->fd, "  ACD                         : %d\n",
-                    getACD(
-                        PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING])
-                        + PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING]),
-
-                        PVT_STAT(pvt, calls_duration[CALL_DIR_OUTGOING])
-                        + PVT_STAT(pvt, calls_duration[CALL_DIR_INCOMING])
-                        )
-                    );
-        */
+        ast_cli(a->fd, "  Queue tasks                 : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_tasks)));
+        ast_cli(a->fd, "  Queue commands              : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_cmds)));
+        ast_cli(a->fd, "  Responses                   : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_responses)));
+        ast_cli(a->fd, "  Bytes of read responses     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, d_read_bytes)));
+        ast_cli(a->fd, "  Bytes of written commands   : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, d_write_bytes)));
+        ast_cli(a->fd, "  Bytes of read audio         : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, a_read_bytes)));
+        ast_cli(a->fd, "  Bytes of written audio      : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, a_write_bytes)));
+        ast_cli(a->fd, "  Readed frames               : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, read_frames)));
+        ast_cli(a->fd, "  Readed short frames         : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, read_sframes)));
+        ast_cli(a->fd, "  Wrote frames                : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_frames)));
+        ast_cli(a->fd, "  Wrote short frames          : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_tframes)));
+        ast_cli(a->fd, "  Wrote silence frames        : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_sframes)));
+        ast_cli(a->fd, "  Write buffer overflow bytes : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, write_rb_overflow_bytes)));
+        ast_cli(a->fd, "  Write buffer overflow count : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_rb_overflow)));
+        ast_cli(a->fd, "  Incoming calls              : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls)));
+        ast_cli(a->fd, "  Waiting calls               : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, cw_calls)));
+        ast_cli(a->fd, "  Handled input calls         : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls_handled)));
+        ast_cli(a->fd, "  Fails to PBX run            : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_pbx_fails)));
+        ast_cli(a->fd, "  Attempts to outgoing calls  : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, out_calls)));
+        ast_cli(a->fd, "  Answered outgoing calls     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING])));
+        ast_cli(a->fd, "  Answered incoming calls     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING])));
         ast_cli(a->fd, "  ASR for incoming calls      : %d\n",
-                getASR(PVT_STAT(pvt, in_calls) + PVT_STAT(pvt, cw_calls), PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING])));
-        ast_cli(a->fd, "  ASR for outgoing calls      : %d\n\n", getASR(PVT_STAT(pvt, out_calls), PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING])));
-        /*
-                ast_cli (a->fd, "  ASR                         : %d\n\n",
-                    getASR(
-                        PVT_STAT(pvt, out_calls)
-                        + PVT_STAT(pvt, in_calls)
-                        + PVT_STAT(pvt, cw_calls),
-
-                        PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING])
-                        + PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING])
-                        )
-                    );
-        */
+                getASR(ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls)) + ast_atomic_fetch_uint32(&PVT_STAT(pvt, cw_calls)),
+                       ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING]))));
+        ast_cli(a->fd, "  ASR for outgoing calls      : %d\n\n",
+                getASR(ast_atomic_fetch_uint32(&PVT_STAT(pvt, out_calls)), ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING]))));
     } else {
         ast_cli(a->fd, "Device %s not found\n", a->argv[4]);
     }

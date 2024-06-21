@@ -108,8 +108,8 @@ void pvt_disconnect(struct pvt* pvt)
     if (!PVT_NO_CHANS(pvt)) {
         struct cpvt* cpvt;
         AST_LIST_TRAVERSE(&(pvt->chans), cpvt, entry) {
-            PVT_STATE(pvt, chan_count[cpvt->state])--;
-            PVT_STATE(pvt, chansno)--;
+            ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, chan_count[cpvt->state]), 1);
+            ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, chansno), 1);
 
             at_hangup_immediately(cpvt, AST_CAUSE_NORMAL_UNSPECIFIED);
             CPVT_SET_FLAG(cpvt, CALL_FLAG_DISCONNECTING);
@@ -1087,17 +1087,18 @@ const char* pvt_str_state(const struct pvt* pvt)
         return state;
     }
 
-    if (pvt->ring || PVT_STATE(pvt, chan_count[CALL_STATE_INCOMING])) {
+    if (pvt->ring || ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_INCOMING]))) {
         state = "Ring";
-    } else if (pvt->cwaiting || PVT_STATE(pvt, chan_count[CALL_STATE_WAITING])) {
+    } else if (pvt->cwaiting || ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_WAITING]))) {
         state = "Waiting";
-    } else if (pvt->dialing || (PVT_STATE(pvt, chan_count[CALL_STATE_INIT]) + PVT_STATE(pvt, chan_count[CALL_STATE_DIALING]) +
-                                PVT_STATE(pvt, chan_count[CALL_STATE_ALERTING])) > 0) {
+    } else if (pvt->dialing || (ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_INIT])) +
+                                ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_DIALING])) +
+                                ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_ALERTING]))) > 0) {
         state = "Dialing";
-    } else if (PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE]) > 0) {
+    } else if (ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE])) > 0) {
         //			state = "Active";
         state = pvt_str_call_dir(pvt);
-    } else if (PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD]) > 0) {
+    } else if (ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD])) > 0) {
         state = "Held";
     } else if (pvt->outgoing_sms || pvt->incoming_sms_index >= 0) {
         state = "SMS";
@@ -1120,25 +1121,26 @@ struct ast_str* pvt_str_state_ex(const struct pvt* pvt)
     if (state) {
         ast_str_append(&buf, 0, "%s", state);
     } else {
-        if (pvt->ring || PVT_STATE(pvt, chan_count[CALL_STATE_INCOMING])) {
+        if (pvt->ring || ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_INCOMING]))) {
             ast_str_append(&buf, 0, "Ring");
         }
 
-        if (pvt->dialing || (PVT_STATE(pvt, chan_count[CALL_STATE_INIT]) + PVT_STATE(pvt, chan_count[CALL_STATE_DIALING]) +
-                             PVT_STATE(pvt, chan_count[CALL_STATE_ALERTING])) > 0) {
+        if (pvt->dialing ||
+            (ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_INIT])) + ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_DIALING])) +
+             ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_ALERTING]))) > 0) {
             ast_str_append(&buf, 0, "Dialing");
         }
 
-        if (pvt->cwaiting || PVT_STATE(pvt, chan_count[CALL_STATE_WAITING])) {
+        if (pvt->cwaiting || ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_WAITING]))) {
             ast_str_append(&buf, 0, "Waiting");
         }
 
-        if (PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE]) > 0) {
-            ast_str_append(&buf, 0, "Active %u", PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE]));
+        if (ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE])) > 0) {
+            ast_str_append(&buf, 0, "Active %u", ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE])));
         }
 
-        if (PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD]) > 0) {
-            ast_str_append(&buf, 0, "Held %u", PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD]));
+        if (ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD])) > 0) {
+            ast_str_append(&buf, 0, "Held %u", ast_atomic_fetch_uint32(&PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD])));
         }
 
         if (pvt->incoming_sms_index >= 0) {
@@ -1501,8 +1503,8 @@ int pvt_direct_write(struct pvt* pvt, const char* buf, size_t count)
 {
     ast_debug(5, "[%s] [%s]\n", PVT_ID(pvt), tmp_esc_nstr(buf, count));
 
-    const size_t wrote            = fd_write_all(pvt->data_fd, buf, count);
-    PVT_STAT(pvt, d_write_bytes) += wrote;
+    const size_t wrote = fd_write_all(pvt->data_fd, buf, count);
+    ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, d_write_bytes), wrote);
     if (wrote != count) {
         ast_debug(1, "[%s][DATA] Write: %s\n", PVT_ID(pvt), strerror(errno));
     }

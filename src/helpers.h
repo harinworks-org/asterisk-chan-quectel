@@ -6,6 +6,7 @@
 
 #include <asterisk/astobj2.h>
 #include <asterisk/localtime.h>
+#include <asterisk/lock.h>
 #include <asterisk/strings.h>
 
 #include "chan_quectel.h" /* restate_time_t */
@@ -16,6 +17,18 @@ int __ao2_unlock_and_unref(void* obj, const char* file, const char* func, int li
 
 int __ao2_ref_and_lock(void* obj, const char* file, const char* func, int line, const char* var);
 #define AO2_REF_AND_LOCK(a) __ao2_ref_and_lock(a, __FILE__, __PRETTY_FUNCTION__, __LINE__, #a)
+
+static inline uint32_t ast_atomic_fetchadd_uint32(volatile uint32_t* p, uint32_t v) { return ast_atomic_fetch_add(p, v, __ATOMIC_RELAXED); }
+
+static inline uint32_t ast_atomic_fetchsub_uint32(volatile uint32_t* p, uint32_t v) { return ast_atomic_fetch_sub(p, v, __ATOMIC_RELAXED); }
+
+static inline uint32_t ast_atomic_fetch_uint32(const volatile uint32_t* p) { return __atomic_load_n(p, __ATOMIC_RELAXED); }
+
+static inline uint64_t ast_atomic_fetchadd_uint64(volatile uint64_t* p, uint64_t v) { return ast_atomic_fetch_add(p, v, __ATOMIC_RELAXED); }
+
+static inline uint64_t ast_atomic_fetchsub_uint64(volatile uint64_t* p, uint64_t v) { return ast_atomic_fetch_sub(p, v, __ATOMIC_RELAXED); }
+
+static inline uint64_t ast_atomic_fetch_uint64(const volatile uint64_t* p) { return __atomic_load_n(p, __ATOMIC_RELAXED); }
 
 /* return status string of sending, status arg is optional */
 int send_ussd(const char* dev_name, const char* ussd);

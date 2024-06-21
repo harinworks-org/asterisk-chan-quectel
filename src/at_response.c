@@ -1031,7 +1031,7 @@ static void handle_clcc(struct pvt* const pvt, const unsigned int call_idx, cons
             pvt->cwaiting = 0;
             pvt->ring     = 0;
 
-            PVT_STAT(pvt, calls_answered[CPVT_DIRECTION(cpvt)])++;
+            ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, calls_answered[CPVT_DIRECTION(cpvt)]), 1);
             if (CPVT_TEST_FLAG(cpvt, CALL_FLAG_CONFERENCE)) {
                 at_enqueue_conference(cpvt);
             }
@@ -1043,14 +1043,14 @@ static void handle_clcc(struct pvt* const pvt, const unsigned int call_idx, cons
             pvt->dialing  = 0;
             pvt->cwaiting = 0;
 
-            PVT_STAT(pvt, in_calls)++;
+            ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, in_calls), 1);
 
             if (pvt_enabled(pvt)) {
                 /* TODO: give dialplan level user tool for checking device is voice enabled or not  */
                 if (start_pbx(pvt, number, call_idx, state)) {
-                    PVT_STAT(pvt, in_pbx_fails)++;
+                    ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, in_pbx_fails), 1);
                 } else {
-                    PVT_STAT(pvt, in_calls_handled)++;
+                    ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, in_calls_handled), 1);
                     if (!pvt->has_voice) {
                         ast_log(LOG_WARNING, "[%s] pbx started for device not voice capable\n", PVT_ID(pvt));
                     }
@@ -1064,18 +1064,18 @@ static void handle_clcc(struct pvt* const pvt, const unsigned int call_idx, cons
             pvt->ring     = 0;
             pvt->dialing  = 0;
 
-            PVT_STAT(pvt, cw_calls)++;
+            ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, cw_calls), 1);
 
             if (dir == CALL_DIR_INCOMING) {
                 if (pvt_enabled(pvt)) {
                     /* TODO: give dialplan level user tool for checking device is voice enabled or not  */
                     if (start_pbx(pvt, number, call_idx, state) == 0) {
-                        PVT_STAT(pvt, in_calls_handled)++;
+                        ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, in_calls_handled), 1);
                         if (!pvt->has_voice) {
                             ast_log(LOG_WARNING, "[%s] pbx started for device not voice capable\n", PVT_ID(pvt));
                         }
                     } else {
-                        PVT_STAT(pvt, in_pbx_fails)++;
+                        ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, in_pbx_fails), 1);
                     }
                 }
             }
@@ -3047,7 +3047,7 @@ static void response_taskproc(struct pvt_taskproc_data* ptd)
         ast_str_trim_blanks(&rtd->response);
     }
 
-    PVT_STAT(rtd->ptd.pvt, at_responses)++;
+    ast_atomic_fetchadd_uint32(&PVT_STAT(rtd->ptd.pvt, at_responses), 1);
     if (at_response(rtd->ptd.pvt, &rtd->response, at_res)) {
         ast_log(LOG_WARNING, "[%s] Fail to handle response\n", PVT_ID(rtd->ptd.pvt));
     }

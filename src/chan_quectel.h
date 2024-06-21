@@ -46,10 +46,10 @@ typedef enum {
 
 /* state */
 typedef struct pvt_state {
-    uint32_t at_tasks;                      /*!< number of active tasks in at_queue */
-    uint32_t at_cmds;                       /*!< number of active commands in at_queue */
-    uint32_t chansno;                       /*!< number of channels in channels list */
-    uint8_t chan_count[CALL_STATES_NUMBER]; /*!< channel number grouped by state */
+    uint32_t at_tasks;                       /*!< number of active tasks in at_queue */
+    uint32_t at_cmds;                        /*!< number of active commands in at_queue */
+    uint32_t chansno;                        /*!< number of channels in channels list */
+    uint32_t chan_count[CALL_STATES_NUMBER]; /*!< channel number grouped by state */
 } pvt_state_t;
 
 #define PVT_STATE_T(state, name) ((state)->name)
@@ -83,7 +83,6 @@ typedef struct pvt_stat {
     uint32_t in_pbx_fails;     /*!< number of start_pbx fails */
 
     uint32_t calls_answered[2]; /*!< number of outgoing and incoming/waiting calls answered */
-    uint32_t calls_duration[2]; /*!< seconds of outgoing and incoming/waiting calls */
 } pvt_stat_t;
 
 #define PVT_STAT_T(stat, name) ((stat)->name)
@@ -266,6 +265,6 @@ int pvt_taskproc_lock_and_execute(struct pvt_taskproc_data* ptd, void (*task_exe
 
 struct ast_module* self_module();
 
-#define PVT_NO_CHANS(pvt) (!PVT_STATE(pvt, chansno))
+#define PVT_NO_CHANS(pvt) (!ast_atomic_fetch_uint32(&PVT_STATE(pvt, chansno)))
 
 #endif /* CHAN_QUECTEL_H_INCLUDED */

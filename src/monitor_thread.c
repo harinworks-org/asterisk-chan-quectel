@@ -300,7 +300,7 @@ static void pvt_monitor_threadproc(struct pvt* const pvt)
         }
 
         if (!ao2_trylock(pvt)) {
-            PVT_STAT(pvt, d_read_bytes) += iovcnt;
+            ast_atomic_fetchadd_uint32(&PVT_STAT(pvt, d_read_bytes), iovcnt);
             ao2_unlock(pvt);
         }
 

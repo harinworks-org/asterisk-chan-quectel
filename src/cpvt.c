@@ -87,8 +87,8 @@ struct cpvt* cpvt_alloc(struct pvt* pvt, int call_idx, unsigned dir, call_state_
     if (PVT_NO_CHANS(pvt)) {
         pvt_on_create_1st_channel(pvt);
     }
-    PVT_STATE(pvt, chansno)++;
-    PVT_STATE(pvt, chan_count[cpvt->state])++;
+    ast_atomic_fetchadd_uint32(&PVT_STATE(pvt, chansno), 1);
+    ast_atomic_fetchadd_uint32(&PVT_STATE(pvt, chan_count[cpvt->state]), 1);
 
     ast_debug(3, "[%s] Create cpvt - idx:%d dir:%d state:%s buffer_len:%u\n", PVT_ID(pvt), call_idx, dir, call_state2str(state), (unsigned int)buffer_size);
     return cpvt;
@@ -101,8 +101,8 @@ static void decrease_chan_counters(const struct cpvt* const cpvt, struct pvt* co
     AST_LIST_TRAVERSE_SAFE_BEGIN(&pvt->chans, found, entry)
         if (found == cpvt) {
             AST_LIST_REMOVE_CURRENT(entry);
-            PVT_STATE(pvt, chan_count[cpvt->state])--;
-            PVT_STATE(pvt, chansno)--;
+            ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, chan_count[cpvt->state]), 1);
+            ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, chansno), 1);
             break;
         }
     AST_LIST_TRAVERSE_SAFE_END;
@@ -233,8 +233,8 @@ int cpvt_control(const struct cpvt* const cpvt, enum ast_control_frame_type cont
 /* update bits of devstate cache */
 static void pvt_update_state_flags(struct pvt* const pvt, const call_state_t oldstate, const call_state_t newstate)
 {
-    PVT_STATE(pvt, chan_count[oldstate])--;
-    PVT_STATE(pvt, chan_count[newstate])++;
+    ast_atomic_fetchsub_uint32(&PVT_STATE(pvt, chan_count[oldstate]), 1);
+    ast_atomic_fetchadd_uint32(&PVT_STATE(pvt, chan_count[newstate]), 1);
 
     switch (newstate) {
         case CALL_STATE_ACTIVE:

@@ -28,6 +28,7 @@
 #include "channel.h"
 #include "char_conv.h" /* char_to_hexstr_7bit() */
 #include "error.h"
+#include "helpers.h"
 #include "pdu.h" /* build_pdu() */
 #include "smsdb.h"
 
@@ -1296,7 +1297,7 @@ int at_enqueue_hangup(struct cpvt* cpvt, int call_idx, int release_cause)
 
     if (cpvt == &pvt->sys_chan || CPVT_DIR_INCOMING(cpvt) || (cpvt->state != CALL_STATE_INIT && cpvt->state != CALL_STATE_DIALING)) {
         /* FIXME: other channels may be in RELEASED or INIT state */
-        if (PVT_STATE(pvt, chansno) > 1) {
+        if (ast_atomic_fetch_uint32(&PVT_STATE(pvt, chansno)) > 1) {
             DECLARE_AT_CMD(chld1x, "+CHLD=1%d");
             static const at_queue_cmd_t cmd = ATQ_CMD_DECLARE_STFT(CMD_AT_CHLD_1x, RES_OK, AT_CMD(chld1x), ATQ_CMD_FLAG_DEFAULT, ATQ_CMD_TIMEOUT_LONG, 0);
 
