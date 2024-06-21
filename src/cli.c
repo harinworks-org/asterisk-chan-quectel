@@ -58,7 +58,7 @@ static char* complete_device(const char* word, int state)
 
     struct ao2_iterator i = ao2_iterator_init(gpublic->pvts, 0);
     while ((pvt = ao2_iterator_next(&i))) {
-        if (ao2_lock(pvt)) {
+        if (ao2_trylock(pvt)) {
             ao2_ref(pvt, -1);
             continue;
         }
@@ -94,9 +94,13 @@ static char* cli_show_devices(struct ast_cli_entry* e, int cmd, struct ast_cli_a
 
     struct ao2_iterator i = ao2_iterator_init(gpublic->pvts, 0);
     while ((pvt = ao2_iterator_next(&i))) {
-        SCOPED_AO2LOCK(pvtl, pvt);
+        if (ao2_trylock(pvt)) {
+            ao2_ref(pvt, -1);
+            continue;
+        }
         ast_cli(a->fd, FORMAT2, PVT_ID(pvt), CONF_SHARED(pvt, group), pvt_str_state(pvt), pvt->rssi, pvt->act, pvt->provider_name, pvt->model, pvt->firmware,
                 pvt->imei, pvt->imsi, pvt->subscriber_number);
+        AO2_UNLOCK_AND_UNREF(pvt);
     }
     ao2_iterator_destroy(&i);
     return CLI_SUCCESS;
