@@ -684,6 +684,7 @@ int pvt_taskproc_lock_and_execute(struct pvt_taskproc_data* ptd, void (*task_exe
     task_exe(ptd);
     ast_debug(6, "[%s][%s] Task executed\n", PVT_ID(ptd->pvt), S_OR(task_name, "UNKNOWN"));
     AO2_UNLOCK_AND_UNREF(ptd->pvt);
+    ast_free(ptd);
     return 0;
 }
 

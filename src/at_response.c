@@ -3040,9 +3040,9 @@ struct at_response_taskproc_data* at_response_taskproc_data_alloc(struct pvt* co
 
 static void response_taskproc(struct pvt_taskproc_data* ptd)
 {
-    RAII_VAR(struct at_response_taskproc_data* const, rtd, (struct at_response_taskproc_data*)ptd, ast_free);
+    struct at_response_taskproc_data* const rtd = (struct at_response_taskproc_data*)ptd;
+    const at_res_t at_res                       = at_str2res(&rtd->response);
 
-    const at_res_t at_res = at_str2res(&rtd->response);
     if (at_res != RES_UNKNOWN) {
         ast_str_trim_blanks(&rtd->response);
     }
