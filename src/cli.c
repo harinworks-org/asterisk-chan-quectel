@@ -124,46 +124,47 @@ static char* cli_show_device_settings(struct ast_cli_entry* e, int cmd, struct a
 
     RAII_VAR(struct pvt* const, pvt, pvt_find(a->argv[4]), pvt_unlock);
 
-    if (pvt) {
-        const struct ast_format* const fmt = pvt_get_audio_format(pvt);
-        const char* const codec_name       = ast_format_get_name(fmt);
-
-        ast_cli(a->fd, "------------- Settings ------------\n");
-        ast_cli(a->fd, "  Device                  : %s\n", PVT_ID(pvt));
-        if (CONF_UNIQ(pvt, uac) > TRIBOOL_FALSE) {
-            ast_cli(a->fd, "  Audio UAC               : %s\n", CONF_UNIQ(pvt, alsadev));
-        } else {
-            ast_cli(a->fd, "  Audio                   : %s\n", CONF_UNIQ(pvt, audio_tty));
-        }
-        ast_cli(a->fd, "  Audio format            : %s\n", codec_name);
-        ast_cli(a->fd, "  Data                    : %s\n", CONF_UNIQ(pvt, data_tty));
-        ast_cli(a->fd, "  Channel Language        : %s\n", CONF_SHARED(pvt, language));
-        ast_cli(a->fd, "  Context                 : %s\n", CONF_SHARED(pvt, context));
-        ast_cli(a->fd, "  Exten                   : %s\n", CONF_SHARED(pvt, exten));
-        ast_cli(a->fd, "  Group                   : %d\n", CONF_SHARED(pvt, group));
-        ast_cli(a->fd, "  Used Notifications      : %s\n", S_COR(CONF_SHARED(pvt, dsci), "DSCI", "CCINFO"));
-        ast_cli(a->fd, "  16kHz audio             : %s\n", AST_CLI_YESNO(CONF_UNIQ(pvt, slin16)));
-        ast_cli(a->fd, "  RX gain                 : %d\n", CONF_SHARED(pvt, rxgain));
-        ast_cli(a->fd, "  TX gain                 : %d\n", CONF_SHARED(pvt, txgain));
-        ast_cli(a->fd, "  Use CallingPres         : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, use_calling_pres)));
-        ast_cli(a->fd, "  Default CallingPres     : %s\n",
-                S_COR(CONF_SHARED(pvt, calling_pres) < 0, "<Not set>", ast_describe_caller_presentation(CONF_SHARED(pvt, calling_pres))));
-        ast_cli(a->fd, "  Message Service         : %d\n", CONF_SHARED(pvt, msg_service));
-        ast_cli(a->fd, "  Message Storage         : %s\n", dc_msgstor2str(CONF_SHARED(pvt, msg_storage)));
-        ast_cli(a->fd, "  Direct Message          : %s\n", dc_3stbool2str_capitalized(CONF_SHARED(pvt, msg_direct)));
-        ast_cli(a->fd, "  Auto Delete SMS         : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, sms_autodelete)));
-        ast_cli(a->fd, "  Reset Modem             : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, reset_modem)));
-        ast_cli(a->fd, "  Call Waiting            : %s\n", dc_cw_setting2str(CONF_SHARED(pvt, call_waiting)));
-        ast_cli(a->fd, "  Multiparty Calls        : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, multiparty)));
-        ast_cli(a->fd, "  DTMF Detection          : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, dtmf)));
-        ast_cli(a->fd, "  DTMF Duration           : %ld\n", CONF_SHARED(pvt, dtmf_duration));
-        ast_cli(a->fd, "  Hold/Unhold Action      : %s\n", S_COR(CONF_SHARED(pvt, dtmf), "MOH", "Mute"));
-        ast_cli(a->fd, "  Query Time              : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, query_time)));
-        ast_cli(a->fd, "  Initial Device State    : %s\n", dev_state2str_capitalized(CONF_SHARED(pvt, init_state)));
-        ast_cli(a->fd, "  Use QHUP Command        : %s\n\n", AST_CLI_YESNO(CONF_SHARED(pvt, qhup)));
-    } else {
+    if (!pvt) {
         ast_cli(a->fd, "Device %s not found\n", a->argv[4]);
+        return CLI_SUCCESS;
     }
+
+    const struct ast_format* const fmt = pvt_get_audio_format(pvt);
+    const char* const codec_name       = ast_format_get_name(fmt);
+
+    ast_cli(a->fd, "------------- Settings ------------\n");
+    ast_cli(a->fd, "  Device                  : %s\n", PVT_ID(pvt));
+    if (CONF_UNIQ(pvt, uac) > TRIBOOL_FALSE) {
+        ast_cli(a->fd, "  Audio UAC               : %s\n", CONF_UNIQ(pvt, alsadev));
+    } else {
+        ast_cli(a->fd, "  Audio                   : %s\n", CONF_UNIQ(pvt, audio_tty));
+    }
+    ast_cli(a->fd, "  Audio format            : %s\n", codec_name);
+    ast_cli(a->fd, "  Data                    : %s\n", CONF_UNIQ(pvt, data_tty));
+    ast_cli(a->fd, "  Channel Language        : %s\n", CONF_SHARED(pvt, language));
+    ast_cli(a->fd, "  Context                 : %s\n", CONF_SHARED(pvt, context));
+    ast_cli(a->fd, "  Exten                   : %s\n", CONF_SHARED(pvt, exten));
+    ast_cli(a->fd, "  Group                   : %d\n", CONF_SHARED(pvt, group));
+    ast_cli(a->fd, "  Used Notifications      : %s\n", S_COR(CONF_SHARED(pvt, dsci), "DSCI", "CCINFO"));
+    ast_cli(a->fd, "  16kHz audio             : %s\n", AST_CLI_YESNO(CONF_UNIQ(pvt, slin16)));
+    ast_cli(a->fd, "  RX gain                 : %d\n", CONF_SHARED(pvt, rxgain));
+    ast_cli(a->fd, "  TX gain                 : %d\n", CONF_SHARED(pvt, txgain));
+    ast_cli(a->fd, "  Use CallingPres         : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, use_calling_pres)));
+    ast_cli(a->fd, "  Default CallingPres     : %s\n",
+            S_COR(CONF_SHARED(pvt, calling_pres) < 0, "<Not set>", ast_describe_caller_presentation(CONF_SHARED(pvt, calling_pres))));
+    ast_cli(a->fd, "  Message Service         : %d\n", CONF_SHARED(pvt, msg_service));
+    ast_cli(a->fd, "  Message Storage         : %s\n", dc_msgstor2str(CONF_SHARED(pvt, msg_storage)));
+    ast_cli(a->fd, "  Direct Message          : %s\n", dc_3stbool2str_capitalized(CONF_SHARED(pvt, msg_direct)));
+    ast_cli(a->fd, "  Auto Delete SMS         : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, sms_autodelete)));
+    ast_cli(a->fd, "  Reset Modem             : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, reset_modem)));
+    ast_cli(a->fd, "  Call Waiting            : %s\n", dc_cw_setting2str(CONF_SHARED(pvt, call_waiting)));
+    ast_cli(a->fd, "  Multiparty Calls        : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, multiparty)));
+    ast_cli(a->fd, "  DTMF Detection          : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, dtmf)));
+    ast_cli(a->fd, "  DTMF Duration           : %ld\n", CONF_SHARED(pvt, dtmf_duration));
+    ast_cli(a->fd, "  Hold/Unhold Action      : %s\n", S_COR(CONF_SHARED(pvt, dtmf), "MOH", "Mute"));
+    ast_cli(a->fd, "  Query Time              : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, query_time)));
+    ast_cli(a->fd, "  Initial Device State    : %s\n", dev_state2str_capitalized(CONF_SHARED(pvt, init_state)));
+    ast_cli(a->fd, "  Use QHUP Command        : %s\n\n", AST_CLI_YESNO(CONF_SHARED(pvt, qhup)));
 
     return CLI_SUCCESS;
 }
@@ -186,64 +187,65 @@ static char* cli_show_device_state(struct ast_cli_entry* e, int cmd, struct ast_
 
     RAII_VAR(struct pvt* const, pvt, pvt_find(a->argv[4]), pvt_unlock);
 
-    if (pvt) {
-        RAII_VAR(struct ast_str*, state_str, pvt_str_state_ex(pvt), ast_free);
-        RAII_VAR(struct ast_str*, rssi_str, rssi2dBm(pvt->rssi), ast_free);
-
-        ast_cli(a->fd, "-------------- Status -------------\n");
-        ast_cli(a->fd, "  Device                  : %s\n", PVT_ID(pvt));
-        ast_cli(a->fd, "  State                   : %s\n", ast_str_buffer(state_str));
-        if (CONF_UNIQ(pvt, uac) > TRIBOOL_FALSE) {
-            ast_cli(a->fd, "  Audio UAC               : %s\n", CONF_UNIQ(pvt, alsadev));
-        } else {
-            ast_cli(a->fd, "  Audio                   : %s\n", CONF_UNIQ(pvt, audio_tty));
-        }
-        ast_cli(a->fd, "  Data                    : %s\n", CONF_UNIQ(pvt, data_tty));
-        ast_cli(a->fd, "  Voice                   : %s\n", AST_CLI_YESNO(pvt->has_voice));
-        ast_cli(a->fd, "  SMS                     : %s\n", AST_CLI_YESNO(pvt->has_sms));
-        ast_cli(a->fd, "  Manufacturer            : %s\n", pvt->manufacturer);
-        ast_cli(a->fd, "  Model                   : %s\n", pvt->model);
-        ast_cli(a->fd, "  Firmware                : %s\n", pvt->firmware);
-        ast_cli(a->fd, "  IMEI                    : %s\n", pvt->imei);
-        ast_cli(a->fd, "  IMSI                    : %s\n", pvt->imsi);
-        ast_cli(a->fd, "  ICCID                   : %s\n", pvt->iccid);
-        ast_cli(a->fd, "  GSM Registration Status : %s\n", gsm_regstate2str(pvt->gsm_reg_status));
-        ast_cli(a->fd, "  RSSI                    : %d, %s\n", pvt->rssi, ast_str_buffer(rssi_str));
-        ast_cli(a->fd, "  Access technology       : %s\n", sys_act2str(pvt->act));
-        ast_cli(a->fd, "  Network Name            : %s\n", pvt->network_name);
-        ast_cli(a->fd, "  Short Network Name      : %s\n", pvt->short_network_name);
-        ast_cli(a->fd, "  Registered PLMN         : %d\n", pvt->operator);
-        ast_cli(a->fd, "  Provider Name           : %s\n", pvt->provider_name);
-        ast_cli(a->fd, "  Band                    : %s\n", pvt->band);
-        ast_cli(a->fd, "  Location area code      : %s\n", pvt->location_area_code);
-        ast_cli(a->fd, "  Cell ID                 : %s\n", pvt->cell_id);
-        ast_cli(a->fd, "  Subscriber Number       : %s\n", S_OR(pvt->subscriber_number, "Unknown"));
-        ast_cli(a->fd, "  SMS Service Center      : %s\n", pvt->sms_scenter);
-        if (CONF_SHARED(pvt, query_time) && pvt->module_time.tm_year) {
-            struct ast_str* mt = ast_str_alloca(64);
-            format_ast_tm(&pvt->module_time, mt);
-            ast_cli(a->fd, "  Module time             : %s\n", ast_str_buffer(mt));
-        }
-        ast_cli(a->fd, "  Tasks in queue          : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_tasks)));
-        ast_cli(a->fd, "  Commands in queue       : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_cmds)));
-        ast_cli(a->fd, "  Call Waiting            : %s\n", AST_CLI_ONOFF(pvt->has_call_waiting));
-        ast_cli(a->fd, "  Current device state    : %s\n", dev_state2str_capitalized(pvt->current_state));
-        ast_cli(a->fd, "  Desired device state    : %s\n", dev_state2str_capitalized(pvt->desired_state));
-        ast_cli(a->fd, "  When change state       : %s\n", restate2str_msg(pvt->restart_time));
-
-        ast_cli(a->fd, "  Calls/Channels          : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, chansno)));
-        ast_cli(a->fd, "    Active                : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE]));
-        ast_cli(a->fd, "    Held                  : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD]));
-        ast_cli(a->fd, "    Dialing               : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_DIALING]));
-        ast_cli(a->fd, "    Alerting              : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_ALERTING]));
-        ast_cli(a->fd, "    Incoming              : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_INCOMING]));
-        ast_cli(a->fd, "    Waiting               : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_WAITING]));
-        ast_cli(a->fd, "    Releasing             : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_RELEASED]));
-        ast_cli(a->fd, "    Initializing          : %u\n\n", PVT_STATE(pvt, chan_count[CALL_STATE_INIT]));
-        /* TODO: show call waiting  network setting and local config value */
-    } else {
+    if (!pvt) {
         ast_cli(a->fd, "Device %s not found\n", a->argv[4]);
+        return CLI_SUCCESS;
     }
+
+    RAII_VAR(struct ast_str*, state_str, pvt_str_state_ex(pvt), ast_free);
+    RAII_VAR(struct ast_str*, rssi_str, rssi2dBm(pvt->rssi), ast_free);
+
+    ast_cli(a->fd, "-------------- Status -------------\n");
+    ast_cli(a->fd, "  Device                  : %s\n", PVT_ID(pvt));
+    ast_cli(a->fd, "  State                   : %s\n", ast_str_buffer(state_str));
+    if (CONF_UNIQ(pvt, uac) > TRIBOOL_FALSE) {
+        ast_cli(a->fd, "  Audio UAC               : %s\n", CONF_UNIQ(pvt, alsadev));
+    } else {
+        ast_cli(a->fd, "  Audio                   : %s\n", CONF_UNIQ(pvt, audio_tty));
+    }
+    ast_cli(a->fd, "  Data                    : %s\n", CONF_UNIQ(pvt, data_tty));
+    ast_cli(a->fd, "  Voice                   : %s\n", AST_CLI_YESNO(pvt->has_voice));
+    ast_cli(a->fd, "  SMS                     : %s\n", AST_CLI_YESNO(pvt->has_sms));
+    ast_cli(a->fd, "  Manufacturer            : %s\n", pvt->manufacturer);
+    ast_cli(a->fd, "  Model                   : %s\n", pvt->model);
+    ast_cli(a->fd, "  Firmware                : %s\n", pvt->firmware);
+    ast_cli(a->fd, "  IMEI                    : %s\n", pvt->imei);
+    ast_cli(a->fd, "  IMSI                    : %s\n", pvt->imsi);
+    ast_cli(a->fd, "  ICCID                   : %s\n", pvt->iccid);
+    ast_cli(a->fd, "  GSM Registration Status : %s\n", gsm_regstate2str(pvt->gsm_reg_status));
+    ast_cli(a->fd, "  RSSI                    : %d, %s\n", pvt->rssi, ast_str_buffer(rssi_str));
+    ast_cli(a->fd, "  Access technology       : %s\n", sys_act2str(pvt->act));
+    ast_cli(a->fd, "  Network Name            : %s\n", pvt->network_name);
+    ast_cli(a->fd, "  Short Network Name      : %s\n", pvt->short_network_name);
+    ast_cli(a->fd, "  Registered PLMN         : %d\n", pvt->operator);
+    ast_cli(a->fd, "  Provider Name           : %s\n", pvt->provider_name);
+    ast_cli(a->fd, "  Band                    : %s\n", pvt->band);
+    ast_cli(a->fd, "  Location area code      : %s\n", pvt->location_area_code);
+    ast_cli(a->fd, "  Cell ID                 : %s\n", pvt->cell_id);
+    ast_cli(a->fd, "  Subscriber Number       : %s\n", S_OR(pvt->subscriber_number, "Unknown"));
+    ast_cli(a->fd, "  SMS Service Center      : %s\n", pvt->sms_scenter);
+    if (CONF_SHARED(pvt, query_time) && pvt->module_time.tm_year) {
+        struct ast_str* mt = ast_str_alloca(64);
+        format_ast_tm(&pvt->module_time, mt);
+        ast_cli(a->fd, "  Module time             : %s\n", ast_str_buffer(mt));
+    }
+    ast_cli(a->fd, "  Tasks in queue          : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_tasks)));
+    ast_cli(a->fd, "  Commands in queue       : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, at_cmds)));
+    ast_cli(a->fd, "  Call Waiting            : %s\n", AST_CLI_ONOFF(pvt->has_call_waiting));
+    ast_cli(a->fd, "  Current device state    : %s\n", dev_state2str_capitalized(pvt->current_state));
+    ast_cli(a->fd, "  Desired device state    : %s\n", dev_state2str_capitalized(pvt->desired_state));
+    ast_cli(a->fd, "  When change state       : %s\n", restate2str_msg(pvt->restart_time));
+
+    ast_cli(a->fd, "  Calls/Channels          : %u\n", ast_atomic_fetch_uint32(&PVT_STATE(pvt, chansno)));
+    ast_cli(a->fd, "    Active                : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_ACTIVE]));
+    ast_cli(a->fd, "    Held                  : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_ONHOLD]));
+    ast_cli(a->fd, "    Dialing               : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_DIALING]));
+    ast_cli(a->fd, "    Alerting              : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_ALERTING]));
+    ast_cli(a->fd, "    Incoming              : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_INCOMING]));
+    ast_cli(a->fd, "    Waiting               : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_WAITING]));
+    ast_cli(a->fd, "    Releasing             : %u\n", PVT_STATE(pvt, chan_count[CALL_STATE_RELEASED]));
+    ast_cli(a->fd, "    Initializing          : %u\n\n", PVT_STATE(pvt, chan_count[CALL_STATE_INIT]));
+    /* TODO: show call waiting  network setting and local config value */
 
     return CLI_SUCCESS;
 }
@@ -281,38 +283,39 @@ static char* cli_show_device_statistics(struct ast_cli_entry* e, int cmd, struct
 
     RAII_VAR(struct pvt* const, pvt, pvt_find(a->argv[4]), pvt_unlock);
 
-    if (pvt) {
-        ast_cli(a->fd, "-------------- Statistics -------------\n");
-        ast_cli(a->fd, "  Device                      : %s\n", PVT_ID(pvt));
-        ast_cli(a->fd, "  Queue tasks                 : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_tasks)));
-        ast_cli(a->fd, "  Queue commands              : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_cmds)));
-        ast_cli(a->fd, "  Responses                   : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_responses)));
-        ast_cli(a->fd, "  Bytes of read responses     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, d_read_bytes)));
-        ast_cli(a->fd, "  Bytes of written commands   : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, d_write_bytes)));
-        ast_cli(a->fd, "  Bytes of read audio         : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, a_read_bytes)));
-        ast_cli(a->fd, "  Bytes of written audio      : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, a_write_bytes)));
-        ast_cli(a->fd, "  Readed frames               : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, read_frames)));
-        ast_cli(a->fd, "  Readed short frames         : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, read_sframes)));
-        ast_cli(a->fd, "  Wrote frames                : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_frames)));
-        ast_cli(a->fd, "  Wrote short frames          : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_tframes)));
-        ast_cli(a->fd, "  Wrote silence frames        : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_sframes)));
-        ast_cli(a->fd, "  Write buffer overflow bytes : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, write_rb_overflow_bytes)));
-        ast_cli(a->fd, "  Write buffer overflow count : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_rb_overflow)));
-        ast_cli(a->fd, "  Incoming calls              : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls)));
-        ast_cli(a->fd, "  Waiting calls               : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, cw_calls)));
-        ast_cli(a->fd, "  Handled input calls         : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls_handled)));
-        ast_cli(a->fd, "  Fails to PBX run            : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_pbx_fails)));
-        ast_cli(a->fd, "  Attempts to outgoing calls  : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, out_calls)));
-        ast_cli(a->fd, "  Answered outgoing calls     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING])));
-        ast_cli(a->fd, "  Answered incoming calls     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING])));
-        ast_cli(a->fd, "  ASR for incoming calls      : %d\n",
-                getASR(ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls)) + ast_atomic_fetch_uint32(&PVT_STAT(pvt, cw_calls)),
-                       ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING]))));
-        ast_cli(a->fd, "  ASR for outgoing calls      : %d\n\n",
-                getASR(ast_atomic_fetch_uint32(&PVT_STAT(pvt, out_calls)), ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING]))));
-    } else {
+    if (!pvt) {
         ast_cli(a->fd, "Device %s not found\n", a->argv[4]);
+        return CLI_SUCCESS;
     }
+
+    ast_cli(a->fd, "-------------- Statistics -------------\n");
+    ast_cli(a->fd, "  Device                      : %s\n", PVT_ID(pvt));
+    ast_cli(a->fd, "  Queue tasks                 : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_tasks)));
+    ast_cli(a->fd, "  Queue commands              : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_cmds)));
+    ast_cli(a->fd, "  Responses                   : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, at_responses)));
+    ast_cli(a->fd, "  Bytes of read responses     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, d_read_bytes)));
+    ast_cli(a->fd, "  Bytes of written commands   : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, d_write_bytes)));
+    ast_cli(a->fd, "  Bytes of read audio         : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, a_read_bytes)));
+    ast_cli(a->fd, "  Bytes of written audio      : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, a_write_bytes)));
+    ast_cli(a->fd, "  Readed frames               : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, read_frames)));
+    ast_cli(a->fd, "  Readed short frames         : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, read_sframes)));
+    ast_cli(a->fd, "  Wrote frames                : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_frames)));
+    ast_cli(a->fd, "  Wrote short frames          : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_tframes)));
+    ast_cli(a->fd, "  Wrote silence frames        : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_sframes)));
+    ast_cli(a->fd, "  Write buffer overflow bytes : %llu\n", (unsigned long long int)ast_atomic_fetch_uint64(&PVT_STAT(pvt, write_rb_overflow_bytes)));
+    ast_cli(a->fd, "  Write buffer overflow count : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, write_rb_overflow)));
+    ast_cli(a->fd, "  Incoming calls              : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls)));
+    ast_cli(a->fd, "  Waiting calls               : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, cw_calls)));
+    ast_cli(a->fd, "  Handled input calls         : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls_handled)));
+    ast_cli(a->fd, "  Fails to PBX run            : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_pbx_fails)));
+    ast_cli(a->fd, "  Attempts to outgoing calls  : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, out_calls)));
+    ast_cli(a->fd, "  Answered outgoing calls     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING])));
+    ast_cli(a->fd, "  Answered incoming calls     : %u\n", ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING])));
+    ast_cli(a->fd, "  ASR for incoming calls      : %d\n",
+            getASR(ast_atomic_fetch_uint32(&PVT_STAT(pvt, in_calls)) + ast_atomic_fetch_uint32(&PVT_STAT(pvt, cw_calls)),
+                   ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_INCOMING]))));
+    ast_cli(a->fd, "  ASR for outgoing calls      : %d\n\n",
+            getASR(ast_atomic_fetch_uint32(&PVT_STAT(pvt, out_calls)), ast_atomic_fetch_uint32(&PVT_STAT(pvt, calls_answered[CALL_DIR_OUTGOING]))));
 
     return CLI_SUCCESS;
 }
