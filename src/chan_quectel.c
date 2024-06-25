@@ -677,7 +677,12 @@ int pvt_taskproc_lock_and_execute(struct pvt_taskproc_data* ptd, void (*task_exe
         return 0;
     }
 
-    AO2_REF_AND_LOCK(ptd->pvt);
+    if (!AO2_REF_AND_LOCK(ptd->pvt)) {
+        ast_log(LOG_ERROR, "[%s] Task aborted - lock not acquired\n", S_OR(task_name, "UNKNOWN"));
+        ast_free(ptd);
+        return 0;
+    }
+
     ast_debug(5, "[%s][%s] Task executing\n", PVT_ID(ptd->pvt), S_OR(task_name, "UNKNOWN"));
     task_exe(ptd);
     ast_debug(6, "[%s][%s] Task executed\n", PVT_ID(ptd->pvt), S_OR(task_name, "UNKNOWN"));
@@ -690,8 +695,9 @@ int pvt_taskproc_lock_and_execute(struct pvt_taskproc_data* ptd, void (*task_exe
 
 struct pvt* pvt_find_ex(struct public_state* state, const char* name)
 {
-    struct pvt* pvt;
+    struct pvt* pvt       = NULL;
     struct ao2_iterator i = ao2_iterator_init(state->pvts, 0);
+
     while ((pvt = ao2_iterator_next(&i))) {
         if (ao2_lock(pvt)) {
             ao2_ref(pvt, -1);
@@ -699,13 +705,12 @@ struct pvt* pvt_find_ex(struct public_state* state, const char* name)
         }
 
         if (!strcmp(PVT_ID(pvt), name)) {
-            ao2_iterator_destroy(&i);
-            return pvt;
+            break;
         }
         AO2_UNLOCK_AND_UNREF(pvt);
     }
     ao2_iterator_destroy(&i);
-    return NULL;
+    return pvt;
 }
 
 #/* return locked pvt or NULL */

@@ -296,7 +296,7 @@ static void pvt_monitor_threadproc(struct pvt* const pvt)
         /* FIXME: access to device not locked */
         int iovcnt = at_read(dev, fd[0], &rb);
         if (iovcnt < 0) {
-            break;
+            goto e_restart;
         }
 
         if (!ao2_trylock(pvt)) {
@@ -322,6 +322,9 @@ static void pvt_monitor_threadproc(struct pvt* const pvt)
                     ast_free(tpdata);
                     goto e_restart;
                 }
+            } else {
+                ast_log(LOG_ERROR, "[%s] Fail to handle response - unable to allocate memory\n", dev);
+                goto e_restart;
             }
         }
     }
