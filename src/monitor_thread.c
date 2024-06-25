@@ -345,13 +345,13 @@ static void* monitor_threadproc(void* _pvt)
 {
     struct pvt* const pvt = _pvt;
     pvt_monitor_threadproc(pvt);
-    ao2_ref(pvt, -1);
+    ao2_cleanup(pvt);
     return NULL;
 }
 
 int pvt_monitor_start(struct pvt* pvt)
 {
-    ao2_ref(pvt, 1);
+    ao2_bump(pvt);
 
     const int monitor_thread_event = eventfd_create();
     if (monitor_thread_event <= 0) {
@@ -360,7 +360,7 @@ int pvt_monitor_start(struct pvt* pvt)
 
     pvt->monitor_thread_event = monitor_thread_event;
     if (ast_pthread_create_background(&pvt->monitor_thread, NULL, monitor_threadproc, pvt) < 0) {
-        ao2_ref(pvt, -1);
+        ao2_cleanup(pvt);
         pvt->monitor_thread = AST_PTHREADT_NULL;
         eventfd_close(&pvt->monitor_thread_event);
         return 0;

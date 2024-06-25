@@ -996,7 +996,7 @@ struct ast_channel* channel_new(struct pvt* pvt, int ast_state, const char* cid_
         struct ast_format_cap* const cap = ast_format_cap_alloc(AST_FORMAT_CAP_FLAG_DEFAULT);
         ast_format_cap_append_by_type(cap, AST_MEDIA_TYPE_TEXT);
         ast_channel_nativeformats_set(channel, cap);
-        ao2_ref(cap, -1);
+        ao2_cleanup(cap);
     } else {
         struct ast_format* const fmt = (struct ast_format*)pvt_get_audio_format(pvt);
 #if PTIME_USE_DEFAULT
@@ -1008,7 +1008,7 @@ struct ast_channel* channel_new(struct pvt* pvt, int ast_state, const char* cid_
         ast_format_cap_append(cap, fmt, ms);
         ast_format_cap_set_framing(cap, ms);
         ast_channel_nativeformats_set(channel, cap);
-        ao2_ref(cap, -1);
+        ao2_cleanup(cap);
 
         ast_channel_set_rawreadformat(channel, fmt);
         ast_channel_set_rawwriteformat(channel, fmt);

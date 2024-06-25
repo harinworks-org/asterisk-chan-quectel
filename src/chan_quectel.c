@@ -209,10 +209,8 @@ void pvt_disconnect(struct pvt* pvt)
     /* clear statictics */
     memset(&pvt->stat, 0, sizeof(pvt->stat));
 
-    if (pvt->local_format_cap) {
-        ao2_ref(pvt->local_format_cap, -1);
-        pvt->local_format_cap = NULL;
-    }
+    ao2_cleanup(pvt->local_format_cap);
+    pvt->local_format_cap = NULL;
 
     ast_verb(3, "[%s] Disconnected\n", PVT_ID(pvt));
 }
@@ -658,9 +656,9 @@ int pvt_taskproc_trylock_and_execute(struct pvt* pvt, void (*task_exe)(struct pv
         return 0;
     }
 
-    ao2_ref(pvt, 1);
+    ao2_bump(pvt);
     if (ao2_trylock(pvt)) {
-        ao2_ref(pvt, -1);
+        ao2_cleanup(pvt);
         ast_debug(4, "[%s] Task skipping: no lock\n", S_OR(task_name, "UNKNOWN"));
         return 0;
     }
@@ -669,7 +667,7 @@ int pvt_taskproc_trylock_and_execute(struct pvt* pvt, void (*task_exe)(struct pv
     task_exe(pvt);
     ast_debug(6, "[%s][%s] Task executed\n", PVT_ID(pvt), S_OR(task_name, "UNKNOWN"));
     ao2_unlock(pvt);
-    ao2_ref(pvt, -1);
+    ao2_cleanup(pvt);
     return 0;
 }
 
@@ -1003,7 +1001,7 @@ static struct pvt* pvt_find_by_resource_fn(struct public_state* state, const cha
 
     if (found) {
         if (ao2_lock(found)) {
-            ao2_ref(found, -1);
+            ao2_cleanup(found);
             found = NULL;
         }
     }
@@ -1422,7 +1420,7 @@ static int reload_config(public_state_t* state, int recofigure, restate_time_t w
             } else {
                 ast_log(LOG_ERROR, "[%s] Could not add device to container\n", PVT_ID(new_pvt));
             }
-            ao2_ref(new_pvt, -1);
+            ao2_cleanup(new_pvt);
         }
     }
 
@@ -1439,7 +1437,7 @@ static int reload_config(public_state_t* state, int recofigure, restate_time_t w
 
 static void devices_destroy(public_state_t* state)
 {
-    ao2_ref(state->pvts, -1);
+    ao2_cleanup(state->pvts);
     state->pvts = NULL;
 }
 
@@ -1626,7 +1624,7 @@ static int public_state_init(struct public_state* state)
 
     if (ast_channel_register(&channel_tech)) {
         ast_log(LOG_ERROR, "Unable to register channel class %s\n", channel_tech.type);
-        ao2_ref(channel_tech.capabilities, -1);
+        ao2_cleanup(channel_tech.capabilities);
         channel_tech.capabilities = NULL;
         dev_manager_stop(state);
         devices_destroy(state);
@@ -1653,7 +1651,7 @@ static void public_state_fini(struct public_state* const state)
 {
     /* First, take us out of the channel loop */
     ast_channel_unregister(&channel_tech);
-    ao2_ref(channel_tech.capabilities, -1);
+    ao2_cleanup(channel_tech.capabilities);
     channel_tech.capabilities = NULL;
 
     /* Unregister the CLI */
