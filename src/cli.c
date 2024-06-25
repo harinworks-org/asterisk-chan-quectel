@@ -132,6 +132,7 @@ static char* cli_show_device_settings(struct ast_cli_entry* e, int cmd, struct a
         ast_cli(a->fd, "  Channel Language        : %s\n", CONF_SHARED(pvt, language));
         ast_cli(a->fd, "  Context                 : %s\n", CONF_SHARED(pvt, context));
         ast_cli(a->fd, "  Exten                   : %s\n", CONF_SHARED(pvt, exten));
+        ast_cli(a->fd, "  Always use exten        : %s\n", AST_CLI_YESNO(CONF_SHARED(pvt, always_use_exten)));
         ast_cli(a->fd, "  Group                   : %d\n", CONF_SHARED(pvt, group));
         ast_cli(a->fd, "  Used Notifications      : %s\n", S_COR(CONF_SHARED(pvt, dsci), "DSCI", "CCINFO"));
         ast_cli(a->fd, "  16kHz audio             : %s\n", AST_CLI_YESNO(CONF_UNIQ(pvt, slin16)));

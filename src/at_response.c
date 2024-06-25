@@ -902,11 +902,18 @@ e_return:
     return -1;
 }
 
+static const char* get_exten(const struct pvt* const pvt)
+{
+    if (CONF_SHARED(pvt, always_use_exten)) {
+        return CONF_SHARED(pvt, exten);
+    }
+    return pvt->has_subscriber_number ? pvt->subscriber_number : CONF_SHARED(pvt, exten);
+}
+
 static int start_pbx(struct pvt* const pvt, const char* const number, const int call_idx, const call_state_t state)
 {
     /* TODO: pass also Subscriber number or other DID info for exten  */
-    struct ast_channel* channel = channel_new(pvt, AST_STATE_RING, number, call_idx, CALL_DIR_INCOMING, state,
-                                              pvt->has_subscriber_number ? pvt->subscriber_number : CONF_SHARED(pvt, exten), NULL, NULL, 0);
+    struct ast_channel* channel = channel_new(pvt, AST_STATE_RING, number, call_idx, CALL_DIR_INCOMING, state, get_exten(pvt), NULL, NULL, 0);
 
     if (!channel) {
         ast_log(LOG_ERROR, "[%s] Unable to allocate channel for incoming call\n", PVT_ID(pvt));

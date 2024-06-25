@@ -211,6 +211,8 @@ void dc_sconfig_fill(struct ast_config* cfg, const char* cat, struct dc_sconfig*
             ast_copy_string(config->context, v->value, sizeof(config->context));
         } else if (!strcasecmp(v->name, "exten")) {
             ast_copy_string(config->exten, v->value, sizeof(config->exten));
+        } else if (!strcasecmp(v->name, "always_use_exten")) {
+            config->always_use_exten = parse_on_off(v->name, v->value, 0u);
         } else if (!strcasecmp(v->name, "language")) {
             ast_copy_string(config->language, v->value, sizeof(config->language)); /* set channel language */
         } else if (!strcasecmp(v->name, "group")) {
@@ -344,9 +346,9 @@ static int dc_sconfig_compare(const struct dc_sconfig* const cfg1, const struct 
            cfg1->rxgain != cfg2->rxgain || cfg1->txgain != cfg2->txgain || cfg1->calling_pres != cfg2->calling_pres ||
            cfg1->use_calling_pres != cfg2->use_calling_pres || cfg1->sms_autodelete != cfg2->sms_autodelete || cfg1->reset_modem != cfg2->reset_modem ||
            cfg1->multiparty != cfg2->multiparty || cfg1->dtmf != cfg2->dtmf || cfg1->moh != cfg2->moh || cfg1->query_time != cfg2->query_time ||
-           cfg1->dsci != cfg2->dsci || cfg1->qhup != cfg2->qhup || cfg1->dtmf_duration != cfg2->dtmf_duration || cfg1->init_state != cfg2->init_state ||
-           cfg1->call_waiting != cfg2->call_waiting || cfg1->msg_service != cfg2->msg_service || cfg1->msg_direct != cfg2->msg_direct ||
-           cfg1->msg_storage != cfg2->msg_storage;
+           cfg1->dsci != cfg2->dsci || cfg1->qhup != cfg2->qhup || cfg1->always_use_exten != cfg2->always_use_exten ||
+           cfg1->dtmf_duration != cfg2->dtmf_duration || cfg1->init_state != cfg2->init_state || cfg1->call_waiting != cfg2->call_waiting ||
+           cfg1->msg_service != cfg2->msg_service || cfg1->msg_direct != cfg2->msg_direct || cfg1->msg_storage != cfg2->msg_storage;
 }
 
 static int dc_uconfig_compare(const struct dc_uconfig* const cfg1, const struct dc_uconfig* const cfg2)
