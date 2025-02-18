@@ -2867,6 +2867,18 @@ int at_response(struct pvt* const pvt, const struct ast_str* const response, con
             ast_debug(2, "[%s] Receive RING\n", PVT_ID(pvt));
             break;
 
+        case RES_RING_DS:
+            ast_debug(2, "[%s] Receive RING DS\n", PVT_ID(pvt));
+            break;
+
+        case RES_RING0:
+            ast_debug(2, "[%s] Receive RING##0\n", PVT_ID(pvt));
+            break;
+
+        case RES_RING1:
+            ast_debug(2, "[%s] Receive RING##1\n", PVT_ID(pvt));
+            break;
+
         case RES_BUSY:
             ast_debug(2, "[%s] Receive BUSY\n", PVT_ID(pvt));
             return 0;
