@@ -45,11 +45,11 @@
         },
         "CPACK_PACKAGE_MAINTAINER": {
           "type": "STRING",
-          "value": "Edmunt Pienkowsky"
+          "value": "Harin Lee"
         },
         "CPACK_PACKAGE_CONTACT": {
           "type": "STRING",
-          "value": "roed@onet.eu"
+          "value": "me@hrin.org"
         },
         "CPACK_DEBIAN_PACKAGE_SHLIBDEPS": {
           "type": "BOOL",

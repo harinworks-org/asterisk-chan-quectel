@@ -144,7 +144,7 @@ ENDIF()
 
 PROJECT(asterisk-chan-quectel
     VERSION ${CHAN_VER_MAJOR}.${CHAN_VER_MINOR}.${CHAN_VER_PATCH}.${CHAN_VER_TWEAK}
-    HOMEPAGE_URL "http://github.com/RoEdAl/asterisk-chan-quectel"
+    HOMEPAGE_URL "http://github.com/harinworks-org/asterisk-chan-quectel"
     DESCRIPTION "Asterisk channel driver for Quectel modules"
     LANGUAGES NONE
 )
