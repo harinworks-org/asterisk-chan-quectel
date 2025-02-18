@@ -1338,23 +1338,11 @@ static void devices_destroy(public_state_t* state)
 
 const struct ast_format* pvt_get_audio_format(const struct pvt* const pvt)
 {
-    if (pvt->is_simcom) {
-        switch (CONF_UNIQ(pvt, uac)) {
-            case TRIBOOL_NONE:
-                return ast_format_slin48;
-
-            default:
-                return CONF_UNIQ(pvt, slin16) ? ast_format_slin16 : ast_format_slin;
-        }
-    } else {
-        switch (CONF_UNIQ(pvt, uac)) {
-            case TRIBOOL_NONE:
-                return ast_format_slin48;
-
-            default:
-                return ast_format_slin;
-        }
+    if (CONF_UNIQ(pvt, uac) == TRIBOOL_NONE) {
+        return ast_format_slin48;
     }
+
+    return CONF_UNIQ(pvt, slin16) ? ast_format_slin16 : ast_format_slin;
 }
 
 static size_t pvt_get_audio_frame_size_r(unsigned int ptime, const unsigned int sr)
