@@ -57,7 +57,7 @@ static struct pvt* get_pvt(const char* dev_name, int online)
         return NULL;
     }
 
-    if (!pvt->connected || (online && !(pvt->initialized && pvt->gsm_registered))) {
+    if (!pvt->connected || (online && !pvt->initialized)) {
         ast_mutex_unlock(&pvt->lock);
         chan_quectel_err = E_DEVICE_DISABLED;
         return NULL;
