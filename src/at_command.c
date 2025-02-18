@@ -329,7 +329,6 @@ int at_enqueue_initialization_quectel(struct cpvt* cpvt, unsigned int dsci)
 
     const at_queue_cmd_t cmds[] = {
         ATQ_CMD_DECLARE_STI(CMD_AT_QCCID, qccid),
-        ATQ_CMD_DECLARE_STI(CMD_AT_QTONEDET_1, qtonedet_1),
         ATQ_CMD_DECLARE_ST(CMD_AT_CVOICE, qpcmv), /* read the current voice mode, and return sampling rate、data bit、frame period */
         ccinfo_cmds[dsci ? 2 : 3],
         ccinfo_cmds[dsci ? 1 : 0],
