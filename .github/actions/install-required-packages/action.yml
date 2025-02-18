@@ -8,8 +8,8 @@ runs:
       with:
         packages: |
           git wget jq
-          build-essential dpkg-dev python2
-          libasound2-dev libsqlite3-dev asterisk-dev
+          build-essential python2 cmake
+          asterisk-dev libasound2-dev libsqlite3-dev
   
     - name: Git configuration
       shell: bash

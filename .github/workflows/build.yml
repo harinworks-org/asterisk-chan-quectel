@@ -1,55 +1,38 @@
-#
-# Building chan_quectel
-#
-name: Build channel
+name: build
 
 on:
-  workflow_dispatch:
-  pull_request:
-    branches: [ "master" ]
   push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
-  formatting-check:
-    name: Formatting Check
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: jidicula/clang-format-action@v4.11.0
-      with:
-        clang-format-version: 18
-        check-path: src
-
-  check-openwrt:
-    name: Collect sources of OpenWRT package
-    runs-on: ubuntu-latest
-    needs: formatting-check
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - uses: ./.github/actions/install-required-packages
-    - name: Get source date epoch
-      run: ./get-source-date-epoch.sh > .env
-    - name: Configure project
-      run: ./dotenv.sh .env cmake -P configure-openwrt-makefile.cmake
-    - name: Collect sources of OpenWRT package
-      run: ./dotenv.sh .env cmake -P build-chan-quectel.cmake openwrt
-
   build:
-    name: Build module
-    runs-on: ubuntu-latest
-    needs: formatting-check
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
+    - name: checkout
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: ./.github/actions/install-required-packages
-    - name: Get source date epoch
-      run: ./get-source-date-epoch.sh > .env
-    - name: Collect build flags
-      run: ./get-build-flags.sh deb > CMakeUserPresets.json
-    - name: Configure project
-      run: ./dotenv.sh .env cmake -P make-build-dir.cmake deb
-    - name: Build
-      run: ./dotenv.sh .env cmake -P build-chan-quectel.cmake deb
+
+    - name: install-required-packages
+      uses: ./.github/actions/install-required-packages
+
+    - name: get-source-date-epoch
+      run: ./get-source-date-epoch.sh > ".env"
+
+    - name: get-build-flags
+      run: ./get-build-flags.sh deb > "CMakeUserPresets.json"
+
+    - name: make-build-dir
+      run: ./dotenv.sh ".env" cmake -P "make-build-dir.cmake" deb
+
+    - name: build-chan-quectel
+      run: ./dotenv.sh ".env" cmake -P "build-chan-quectel.cmake" deb
+
+    - name: upload-artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: chan-quectel
+        path: |
+          build/*/chan_quectel.so
+        if-no-files-found: error

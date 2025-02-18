@@ -1,0 +1,83 @@
+name: build-ipk
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    strategy:
+      matrix:
+        include:
+        - openwrt: 23.05.0
+          asterisk: 200300
+          target: x86-generic
+          arch: i386
+          gcc: 12.3.0
+
+        - openwrt: 23.05.0
+          asterisk: 200300
+          target: x86-64
+          arch: x86_64
+          gcc: 12.3.0
+
+        - openwrt: 23.05.0
+          asterisk: 200300
+          target: ath79-generic
+          arch: mips
+          gcc: 12.3.0
+
+    steps:
+    - name: sparse-checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          .github/actions
+        sparse-checkout-cone-mode: false
+
+    - name: install-required-packages
+      uses: ./.github/actions/install-required-packages
+
+    - name: install-openwrt-sdk
+      uses: ./.github/actions/install-openwrt-sdk
+      with:
+        openwrt-version: ${{ matrix.openwrt }}
+        gcc-version: ${{ matrix.gcc }}
+        target: ${{ matrix.target }}
+        arch: ${{ matrix.arch }}
+        eabi: ${{ matrix.eabi }}
+
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        path: asterisk-modules/asterisk-chan-quectel
+
+    - name: configure-openwrt-makefile
+      run: cmake -P "asterisk-modules/asterisk-chan-quectel/configure-openwrt-makefile.cmake" "${{ matrix.asterisk }}"
+
+    - name: install-openwrt-makefile
+      run: cmake -P "asterisk-modules/asterisk-chan-quectel/install-openwrt-makefile.cmake"
+
+    - name: create-symlink
+      run: |
+        sdk_dir="$(cd "owrtsdk"; pwd)"
+        cd "asterisk-modules/asterisk-chan-quectel/install/openwrt"
+        ln -sf "${sdk_dir}/${{ matrix.target }}" "${{ matrix.target }}"
+
+    - name: setup-feeds
+      working-directory: asterisk-modules/asterisk-chan-quectel/install/openwrt
+      run: cp -f "feeds-strskx.conf" "diffconfig" "build-opk.sh" "${{ matrix.target }}"
+
+    - name: build-opk
+      working-directory: asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}
+      run: ./build-opk.sh
+
+    - name: upload-artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ format('chan-quectel-{0}-{1}-{2}-{3}-{4}', matrix.openwrt, matrix.asterisk, matrix.target, matrix.arch, matrix.gcc) }}
+        path: |
+          asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}/bin/packages/*/strskx/*.ipk
+        if-no-files-found: error

@@ -1,0 +1,113 @@
+name: build-deb
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: install-required-packages
+      uses: ./.github/actions/install-required-packages
+
+    - name: install-lintian
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install lintian
+
+    - name: make-build-dir
+      run: cmake -P "make-build-dir.cmake"
+
+    - name: make-package
+      run: cmake -P "make-package.cmake"
+
+    - name: upload-artifact-deb
+      uses: actions/upload-artifact@v4
+      with:
+        name: chan-quectel-deb
+        path: |
+          package/asterisk-chan-quectel_*.deb
+          package/asterisk-chan-quectel_*.deb.sha256
+        if-no-files-found: error
+
+    - name: upload-artifact-tar
+      uses: actions/upload-artifact@v4
+      with:
+        name: chan-quectel-tar
+        path: |
+          package/asterisk-chan-quectel_*.tar.gz
+          package/asterisk-chan-quectel_*.tar.gz.sha256
+        if-no-files-found: error
+
+  build-arch:
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    strategy:
+      matrix:
+        include:
+        - distro: ubuntu22.04
+          arch: armv7
+
+        - distro: ubuntu22.04
+          arch: aarch64
+
+        - distro: ubuntu22.04
+          arch: riscv64
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: install-required-packages
+      uses: ./.github/actions/install-required-packages
+
+    - name: run-on-arch
+      uses: uraimo/run-on-arch-action@v2
+      with:
+        distro: ${{ matrix.distro }}
+        arch: ${{ matrix.arch }}
+        githubToken: ${{ github.token }}
+        install: |
+          apt-get -y update
+          apt-get -y install \
+            git wget jq \
+            build-essential python2 cmake \
+            asterisk-dev libasound2-dev libsqlite3-dev
+          apt-get -y install lintian
+          git config --global --add safe.directory "/home/runner/work/asterisk-chan-quectel/asterisk-chan-quectel"
+        env: |
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set +eu
+          cmake -P "make-build-dir.cmake"
+          cmake -P "make-package.cmake"
+          exit 0
+
+    - name: upload-artifact-deb
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ format('chan-quectel-{0}-{1}-deb', matrix.distro, matrix.arch) }}
+        path: |
+          package/asterisk-chan-quectel_*.deb
+          package/asterisk-chan-quectel_*.deb.sha256
+        if-no-files-found: error
+
+    - name: upload-artifact-tar
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ format('chan-quectel-{0}-{1}-tar', matrix.distro, matrix.arch) }}
+        path: |
+          package/asterisk-chan-quectel_*.tar.gz
+          package/asterisk-chan-quectel_*.tar.gz.sha256
+        if-no-files-found: error
