@@ -1473,9 +1473,15 @@ static int public_state_init(struct public_state* state)
         return rv;
     }
 
-    append_fmt(channel_tech.capabilities, ast_format_slin);
-    append_fmt(channel_tech.capabilities, ast_format_slin16);
-    append_fmt(channel_tech.capabilities, ast_format_slin48);
+    struct pvt* pvt;
+
+    AST_RWLIST_RDLOCK(&state->devices);
+    AST_RWLIST_TRAVERSE(&state->devices, pvt, entry) {
+        SCOPED_MUTEX(pvt_lock, &pvt->lock);
+        append_fmt(channel_tech.capabilities, (struct ast_format*) pvt_get_audio_format(pvt));
+    }
+    AST_RWLIST_UNLOCK(&state->devices);
+
     ast_format_cap_set_framing(channel_tech.capabilities, get_default_framing());
 
     if (ast_channel_register(&channel_tech)) {
