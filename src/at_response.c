@@ -1611,7 +1611,7 @@ static int at_response_msg(struct pvt* const pvt, const struct ast_str* const re
     if (res < 0) {
         ast_log(LOG_WARNING, "[%s] Error parsing incoming message: %s\n", PVT_ID(pvt), error2str(chan_quectel_err));
         msg_ack = TRIBOOL_FALSE;
-        goto msg_done_ack;
+        goto msg_done;
     }
 
     ast_str_update(msg);
@@ -1650,29 +1650,33 @@ static int at_response_msg(struct pvt* const pvt, const struct ast_str* const re
             struct ast_str* scts_str = ast_str_alloca(AST_TM_MAX_LEN);
             format_ast_tm(&scts, scts_str);
 
-            if (udh.parts > 1) {
+            int is_receive_as_is = 0;
+
+            if (udh.parts >= 2) {
                 ast_verb(2, "[%s][SMS:%d PART:%d/%d TS:%s] Got message part from %s: [%s]\n", PVT_ID(pvt), (int)udh.ref, (int)udh.order, (int)udh.parts,
                          ast_str_buffer(scts_str), ast_str_buffer(oa), ast_str_buffer(msg));
                 int csms_cnt = smsdb_put(pvt->imsi, ast_str_buffer(oa), udh.ref, udh.parts, udh.order, ast_str_buffer(msg), &fullmsg);
                 if (csms_cnt <= 0) {
                     ast_log(LOG_ERROR, "[%s][SMS:%d PART:%d/%d TS:%s] Error putting message part to database\n", PVT_ID(pvt), (int)udh.ref, (int)udh.order,
                             (int)udh.parts, ast_str_buffer(scts_str));
-                    goto receive_as_is;
-                }
-                ast_str_update(fullmsg);
-                msg_ack      = TRIBOOL_TRUE;
-                msg_ack_uid  = (int)udh.ref;
-                msg_complete = (csms_cnt < (int)udh.parts) ? 0 : 1;
+                    is_receive_as_is = 1;
+                } else {
+                    ast_str_update(fullmsg);
+                    msg_ack      = TRIBOOL_TRUE;
+                    msg_ack_uid  = (int)udh.ref;
+                    msg_complete = (csms_cnt < (int)udh.parts) ? 0 : 1;
 
-                if (!msg_complete) {
-                    if ((int)udh.order == (int)udh.parts) {
-                        ast_debug(1, "[%s][SMS:%d PART:%d/%d TS:%s] Incomplete message, got %d parts\n", PVT_ID(pvt), (int)udh.ref, (int)udh.order,
-                                  (int)udh.parts, ast_str_buffer(scts_str), csms_cnt);
+                    if (!msg_complete) {
+                        if ((int)udh.order == (int)udh.parts) {
+                            ast_debug(1, "[%s][SMS:%d PART:%d/%d TS:%s] Incomplete message, got %d parts\n", PVT_ID(pvt), (int)udh.ref, (int)udh.order,
+                                    (int)udh.parts, ast_str_buffer(scts_str), csms_cnt);
+                        }
+                        goto msg_done;
                     }
-                    goto msg_done;
                 }
-            } else {
-receive_as_is:
+            }
+
+            if (udh.parts < 2 || is_receive_as_is) {
                 msg_ack      = TRIBOOL_TRUE;
                 msg_ack_uid  = (int)udh.ref;
                 msg_complete = 1;
@@ -1701,25 +1705,16 @@ receive_as_is:
                          ast_str_buffer(oa));
             }
 
+            if (CONF_SHARED(pvt, sms_autodelete) && (cmd == RES_CMGR || cmd == RES_CMGL)) {
+                at_enqueue_delete_sms(&pvt->sys_chan, cmd == RES_CMGR ? pvt->incoming_sms_index : idx, TRIBOOL_NONE);
+            }
+
             channel_start_local_json(pvt, "sms", ast_str_buffer(oa), "SMS", sms);
             break;
         }
     }
 
 msg_done:
-
-    if (CONF_SHARED(pvt, sms_autodelete) && msg_complete) {
-        switch (cmd) {
-            case RES_CMGL:
-                at_enqueue_delete_sms(&pvt->sys_chan, idx, TRIBOOL_NONE);
-                goto msg_ret;
-
-            default:
-                break;
-        }
-    }
-
-msg_done_ack:
     switch (cmd) {
         case RES_CMGR:
             at_sms_retrieved(&pvt->sys_chan, 0);
@@ -1752,8 +1747,6 @@ msg_done_ack:
         default:
             break;
     }
-
-msg_ret:
 
     return 0;
 }

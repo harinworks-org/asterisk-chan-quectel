@@ -987,20 +987,8 @@ void at_sms_retrieved(struct cpvt* cpvt, int confirm)
 {
     struct pvt* const pvt = cpvt->pvt;
 
-    if (pvt->incoming_sms_index >= 0) {
-        if (CONF_SHARED(pvt, sms_autodelete)) {
-            at_enqueue_delete_sms(cpvt, pvt->incoming_sms_index, TRIBOOL_NONE);
-        }
-        if (confirm) {
-            switch (pvt->incoming_sms_type) {
-                case RES_CDSI:
-                    break;
-
-                default:
-                    ast_log(LOG_WARNING, "[%s][SMS:%d] Message not retrieved\n", PVT_ID(pvt), pvt->incoming_sms_index);
-                    break;
-            }
-        }
+    if (pvt->incoming_sms_index >= 0 && pvt->incoming_sms_type != RES_CDSI && confirm) {
+        ast_log(LOG_WARNING, "[%s][SMS:%d] Message not retrieved\n", PVT_ID(pvt), pvt->incoming_sms_index);
     }
 
     pvt->incoming_sms_index = -1;
