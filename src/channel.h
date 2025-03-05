@@ -28,9 +28,9 @@ int channel_self_request(struct pvt* pvt, const struct ast_channel* requestor);
 
 int channel_enqueue_hangup(struct ast_channel* channel, int hangupcause);
 
-void channel_start_local(struct pvt* pvt, const char* exten, const char* number, const channel_var_t* const vars, const size_t varscnt);
-void channel_start_local_json(struct pvt* pvt, const char* exten, const char* number, const char* const jname, const struct ast_json* const jvar);
-void channel_start_local_report(struct pvt* pvt, const char* subject, local_report_direction direction, const char* number, const struct ast_tm* const ts,
+int channel_start_local(struct pvt* pvt, const char* exten, const char* number, const channel_var_t* const vars, const size_t varscnt);
+int channel_start_local_json(struct pvt* pvt, const char* exten, const char* number, const char* const jname, const struct ast_json* const jvar);
+int channel_start_local_report(struct pvt* pvt, const char* subject, local_report_direction direction, const char* number, const struct ast_tm* const ts,
                                 const struct ast_tm* const dt, int success, struct ast_json* const report);
 
 #endif /* CHAN_QUECTEL_CHANNEL_H_INCLUDED */

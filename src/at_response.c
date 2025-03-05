@@ -1560,7 +1560,8 @@ static int at_response_msg(struct pvt* const pvt, const struct ast_str* const re
     struct ast_tm scts, dt;
     int mr, st;
     int res;
-    int tpdu_type, idx;
+    int tpdu_type;
+    int idx                 = pvt->incoming_sms_index;
     pdu_udh_t udh;
     tristate_bool_t msg_ack = TRIBOOL_NONE;
     int msg_ack_uid         = 0;
@@ -1705,11 +1706,9 @@ static int at_response_msg(struct pvt* const pvt, const struct ast_str* const re
                          ast_str_buffer(oa));
             }
 
-            if (CONF_SHARED(pvt, sms_autodelete) && (cmd == RES_CMGR || cmd == RES_CMGL)) {
-                at_enqueue_delete_sms(&pvt->sys_chan, cmd == RES_CMGR ? pvt->incoming_sms_index : idx, TRIBOOL_NONE);
+            if (!channel_start_local_json(pvt, "sms", ast_str_buffer(oa), "SMS", sms) && CONF_SHARED(pvt, sms_autodelete) && (cmd == RES_CMGR || cmd == RES_CMGL)) {
+                at_enqueue_delete_sms(&pvt->sys_chan, idx, TRIBOOL_NONE);
             }
-
-            channel_start_local_json(pvt, "sms", ast_str_buffer(oa), "SMS", sms);
             break;
         }
     }

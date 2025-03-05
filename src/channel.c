@@ -1057,7 +1057,48 @@ int channel_enqueue_hangup(struct ast_channel* channel, int hangupcause)
     return ast_queue_hangup(channel);
 }
 
-void channel_start_local_report(struct pvt* pvt, const char* subject, local_report_direction direction, const char* number, const struct ast_tm* ts,
+#/* NOTE: bg: called from device level with pvt locked */
+
+int channel_start_local(struct pvt* pvt, const char* exten, const char* number, const channel_var_t* const vars, const size_t varscnt)
+{
+    static const ssize_t CN_DEF_LEN = 64;
+
+    RAII_VAR(struct ast_str*, channel_name, ast_str_create(CN_DEF_LEN), ast_free);
+    ast_str_set(&channel_name, 0, "%s@%s", exten, CONF_SHARED(pvt, context));
+
+    int cause = 0;
+
+    struct ast_channel* const channel =
+        ast_request("Local", pvt->local_format_cap ? pvt->local_format_cap : channel_tech.capabilities, NULL, NULL, ast_str_buffer(channel_name), &cause);
+    if (!channel) {
+        ast_log(LOG_ERROR, "[%s] Unable to request channel Local/%s\n", PVT_ID(pvt), ast_str_buffer(channel_name));
+        return -1;
+    }
+
+    set_channel_vars(pvt, channel);
+    ast_set_callerid(channel, number, PVT_ID(pvt), number);
+
+    for (size_t i = 0; i < varscnt; ++i) {
+        setvar_helper(pvt, channel, vars[i].name, vars[i].value);
+    }
+
+    cause = ast_pbx_start(channel);
+    if (cause) {
+        ast_hangup(channel);
+        ast_log(LOG_ERROR, "[%s] Unable to start pbx on channel Local/%s\n", PVT_ID(pvt), ast_str_buffer(channel_name));
+    }
+
+    return cause;
+}
+
+int channel_start_local_json(struct pvt* pvt, const char* exten, const char* number, const char* const jname, const struct ast_json* const jvar)
+{
+    RAII_VAR(char* const, jstr, ast_json_dump_string((struct ast_json*)jvar), ast_json_free);
+    const channel_var_t var = {jname, jstr};
+    return channel_start_local(pvt, exten, number, &var, 1);
+}
+
+int channel_start_local_report(struct pvt* pvt, const char* subject, local_report_direction direction, const char* number, const struct ast_tm* ts,
                                 const struct ast_tm* dt, int success, struct ast_json* const report)
 {
     static const size_t AST_TM_MAX_LEN = 64;
@@ -1100,46 +1141,7 @@ void channel_start_local_report(struct pvt* pvt, const char* subject, local_repo
         ast_json_object_set(rprt, "report", ast_json_copy(report));
     }
 
-    channel_start_local_json(pvt, "report", number, "REPORT", rprt);
-}
-
-#/* NOTE: bg: called from device level with pvt locked */
-
-void channel_start_local(struct pvt* pvt, const char* exten, const char* number, const channel_var_t* const vars, const size_t varscnt)
-{
-    static const ssize_t CN_DEF_LEN = 64;
-
-    RAII_VAR(struct ast_str*, channel_name, ast_str_create(CN_DEF_LEN), ast_free);
-    ast_str_set(&channel_name, 0, "%s@%s", exten, CONF_SHARED(pvt, context));
-
-    int cause = 0;
-
-    struct ast_channel* const channel =
-        ast_request("Local", pvt->local_format_cap ? pvt->local_format_cap : channel_tech.capabilities, NULL, NULL, ast_str_buffer(channel_name), &cause);
-    if (!channel) {
-        ast_log(LOG_ERROR, "[%s] Unable to request channel Local/%s\n", PVT_ID(pvt), ast_str_buffer(channel_name));
-        return;
-    }
-
-    set_channel_vars(pvt, channel);
-    ast_set_callerid(channel, number, PVT_ID(pvt), number);
-
-    for (size_t i = 0; i < varscnt; ++i) {
-        setvar_helper(pvt, channel, vars[i].name, vars[i].value);
-    }
-
-    cause = ast_pbx_start(channel);
-    if (cause) {
-        ast_hangup(channel);
-        ast_log(LOG_ERROR, "[%s] Unable to start pbx on channel Local/%s\n", PVT_ID(pvt), ast_str_buffer(channel_name));
-    }
-}
-
-void channel_start_local_json(struct pvt* pvt, const char* exten, const char* number, const char* const jname, const struct ast_json* const jvar)
-{
-    RAII_VAR(char* const, jstr, ast_json_dump_string((struct ast_json*)jvar), ast_json_free);
-    const channel_var_t var = {jname, jstr};
-    channel_start_local(pvt, exten, number, &var, 1);
+    return channel_start_local_json(pvt, "report", number, "REPORT", rprt);
 }
 
 #/* */
