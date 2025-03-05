@@ -89,6 +89,25 @@ struct ast_channel;
             <ref type="application">QUECTEL_SEND_SMS</ref>
         </see-also>
     </application>
+    <application name="QUECTEL_DELETE_SMS" language="en_US">
+        <synopsis>
+            Deletes a SMS on specified device.
+        </synopsis>
+        <syntax>
+            <parameter name="device" required="true">
+                <para>Id of device from configuration file.</para>
+            </parameter>
+            <parameter name="idx" required="true">
+                <para>Index of the message.</para>
+            </parameter>
+            <parameter name="delflag" required="false">
+                <para>Deletion flag.</para>
+            </parameter>
+        </syntax>
+        <see-also>
+            <ref type="application">QUECTEL_DELETE_SMS</ref>
+        </see-also>
+    </application>
  ***/
 
 static int app_status_read(struct ast_channel* channel, const char* cmd, char* data, struct ast_str** str, ssize_t maxlen)
@@ -198,6 +217,34 @@ static int parse_report_flag(const char* arg)
     return DEF_REPORT_FLAG;
 }
 
+static unsigned int parse_idx(const char* const arg)
+{
+    static const unsigned int DEF_IDX = 0;
+
+    if (ast_strlen_zero(arg)) {
+        return DEF_IDX;
+    }
+
+    unsigned int idx;
+    const int res = sscanf(arg, "%u", &idx);
+
+    return res ? idx : DEF_IDX;
+}
+
+static int parse_delflag(const char* const arg)
+{
+    static const int DEF_DELFLAG = 0;
+
+    if (ast_strlen_zero(arg)) {
+        return DEF_DELFLAG;
+    }
+
+    int delflag;
+    const int res = sscanf(arg, "%d", &delflag);
+
+    return res ? delflag : DEF_DELFLAG;
+}
+
 static int app_send_sms_exec(attribute_unused struct ast_channel* channel, const char* data)
 {
     /* clang-format off */
@@ -267,7 +314,45 @@ static int app_send_ussd_exec(attribute_unused struct ast_channel* channel, cons
         return -1;
     }
 
-    if (send_ussd(args.device, args.ussd) < 0) {
+    if (send_ussd(args.device, args.ussd)) {
+        ast_log(LOG_ERROR, "[%s] %s\n", args.device, error2str(chan_quectel_err));
+        return -1;
+    }
+
+    return 0;
+}
+
+static int app_delete_sms_exec(attribute_unused struct ast_channel* channel, const char* data)
+{
+    /* clang-format off */
+
+    AST_DECLARE_APP_ARGS(args,
+        AST_APP_ARG(device);
+        AST_APP_ARG(idx);
+        AST_APP_ARG(delflag);
+    );
+
+    /* clang-format on */
+
+    if (ast_strlen_zero(data)) {
+        return -1;
+    }
+
+    char* const parse = ast_strdupa(data);
+
+    AST_STANDARD_APP_ARGS(args, parse);
+
+    if (ast_strlen_zero(args.device)) {
+        ast_log(LOG_ERROR, "NULL device for message -- SMS will not be deleted\n");
+        return -1;
+    }
+
+    if (ast_strlen_zero(args.idx)) {
+        ast_log(LOG_ERROR, "NULL idx for message -- SMS will not be deleted\n");
+        return -1;
+    }
+
+    if (delete_sms(args.device, parse_idx(args.idx), parse_delflag(args.delflag))) {
         ast_log(LOG_ERROR, "[%s] %s\n", args.device, error2str(chan_quectel_err));
         return -1;
     }
@@ -292,6 +377,7 @@ static struct ast_custom_function status_ex_function = {
 
 static const char APP_SEND_SMS[]  = "QUECTEL_SEND_SMS";
 static const char APP_SEND_USSD[] = "QUECTEL_SEND_USSD";
+static const char APP_DELETE_SMS[]  = "QUECTEL_DELETE_SMS";
 
 int app_register()
 {
@@ -304,12 +390,14 @@ int app_register()
     res |= ast_custom_function_register(&status_ex_function);
     res |= ast_register_application2(APP_SEND_SMS, app_send_sms_exec, NULL, NULL, self_module());
     res |= ast_register_application2(APP_SEND_USSD, app_send_ussd_exec, NULL, NULL, self_module());
+    res |= ast_register_application2(APP_DELETE_SMS, app_delete_sms_exec, NULL, NULL, self_module());
 
     return res;
 }
 
 void app_unregister()
 {
+    ast_unregister_application(APP_DELETE_SMS);
     ast_unregister_application(APP_SEND_USSD);
     ast_unregister_application(APP_SEND_SMS);
     ast_custom_function_unregister(&status_ex_function);

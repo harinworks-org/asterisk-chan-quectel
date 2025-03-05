@@ -1687,6 +1687,7 @@ static int at_response_msg(struct pvt* const pvt, const struct ast_str* const re
             }
 
             RAII_VAR(struct ast_json*, sms, ast_json_object_create(), ast_json_unref);
+            ast_json_object_set(sms, "idx", ast_json_integer_create(idx));
             ast_json_object_set(sms, "ts", ast_json_string_create(ast_str_buffer(scts_str)));
             if (udh.ref) {
                 ast_json_object_set(sms, "ref", ast_json_integer_create((int)udh.ref));
