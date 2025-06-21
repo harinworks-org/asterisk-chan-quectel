@@ -24,8 +24,8 @@ jobs:
 
         - openwrt: 23.05.0
           asterisk: 200300
-          target: ath79-generic
-          arch: mips
+          target: rockchip-armv8
+          arch: aarch64
           gcc: 12.3.0
 
     steps:
