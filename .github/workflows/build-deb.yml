@@ -63,6 +63,12 @@ jobs:
         - distro: ubuntu22.04
           arch: riscv64
 
+        - distro: ubuntu22.04
+          arch: s390x
+
+        - distro: ubuntu22.04
+          arch: ppc64le
+
     steps:
     - name: checkout
       uses: actions/checkout@v4
@@ -73,7 +79,7 @@ jobs:
       uses: ./.github/actions/install-required-packages
 
     - name: run-on-arch
-      uses: uraimo/run-on-arch-action@v2
+      uses: uraimo/run-on-arch-action@v3
       with:
         distro: ${{ matrix.distro }}
         arch: ${{ matrix.arch }}

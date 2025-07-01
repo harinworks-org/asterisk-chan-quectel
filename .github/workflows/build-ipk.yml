@@ -12,8 +12,14 @@ jobs:
         include:
         - openwrt: 23.05.0
           asterisk: 200300
-          target: x86-generic
-          arch: i386
+          target: ath79-generic
+          arch: mips
+          gcc: 12.3.0
+
+        - openwrt: 23.05.0
+          asterisk: 200300
+          target: rockchip-armv8
+          arch: aarch64
           gcc: 12.3.0
 
         - openwrt: 23.05.0
@@ -24,8 +30,8 @@ jobs:
 
         - openwrt: 23.05.0
           asterisk: 200300
-          target: ath79-generic
-          arch: mips
+          target: x86-generic
+          arch: i386
           gcc: 12.3.0
 
     steps:
