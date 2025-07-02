@@ -4,13 +4,14 @@ runs:
   using: composite
   steps:
     - name: Install packages
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: |
-          git wget jq
-          build-essential python2 cmake
+      shell: bash
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install \
+          git wget jq \
+          build-essential cmake \
           asterisk-dev libasound2-dev libsqlite3-dev
-  
+
     - name: Git configuration
       shell: bash
       run: git config --global advice.detachedHead false
