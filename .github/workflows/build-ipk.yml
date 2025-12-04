@@ -38,7 +38,7 @@ jobs:
 
     steps:
     - name: sparse-checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         sparse-checkout: |
           .github/actions
@@ -57,7 +57,7 @@ jobs:
         eabi: ${{ matrix.eabi }}
 
     - name: checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
         path: asterisk-modules/asterisk-chan-quectel
@@ -83,7 +83,7 @@ jobs:
       run: ./build-opk.sh
 
     - name: upload-artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ format('chan-quectel-{0}-{1}-{2}-{3}-{4}', matrix.openwrt, matrix.asterisk, matrix.target, matrix.arch, matrix.gcc) }}
         path: |

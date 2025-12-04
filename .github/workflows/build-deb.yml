@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - name: checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -31,7 +31,7 @@ jobs:
       run: cmake -P "make-package.cmake"
 
     - name: upload-artifact-deb
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: chan-quectel-deb
         path: |
@@ -40,7 +40,7 @@ jobs:
         if-no-files-found: error
 
     - name: upload-artifact-tar
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: chan-quectel-tar
         path: |
@@ -71,7 +71,7 @@ jobs:
 
     steps:
     - name: checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -101,7 +101,7 @@ jobs:
           exit 0
 
     - name: upload-artifact-deb
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ format('chan-quectel-{0}-{1}-deb', matrix.distro, matrix.arch) }}
         path: |
@@ -110,7 +110,7 @@ jobs:
         if-no-files-found: error
 
     - name: upload-artifact-tar
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ format('chan-quectel-{0}-{1}-tar', matrix.distro, matrix.arch) }}
         path: |
