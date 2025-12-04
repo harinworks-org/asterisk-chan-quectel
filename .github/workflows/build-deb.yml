@@ -9,44 +9,44 @@ jobs:
     continue-on-error: true
 
     steps:
-    - name: checkout
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-    - name: install-required-packages
-      uses: ./.github/actions/install-required-packages
+      - name: install-required-packages
+        uses: ./.github/actions/install-required-packages
 
-    - name: install-lintian
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        sudo apt-get -y update
-        sudo apt-get -y install lintian
+      - name: install-lintian
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install lintian
 
-    - name: make-build-dir
-      run: cmake -P "make-build-dir.cmake"
+      - name: make-build-dir
+        run: cmake -P make-build-dir.cmake
 
-    - name: make-package
-      run: cmake -P "make-package.cmake"
+      - name: make-package
+        run: cmake -P make-package.cmake
 
-    - name: upload-artifact-deb
-      uses: actions/upload-artifact@v5
-      with:
-        name: chan-quectel-deb
-        path: |
-          package/asterisk-chan-quectel_*.deb
-          package/asterisk-chan-quectel_*.deb.sha256
-        if-no-files-found: error
+      - name: upload-artifact-deb
+        uses: actions/upload-artifact@v5
+        with:
+          name: chan-quectel-deb
+          path: |
+            package/asterisk-chan-quectel_*.deb
+            package/asterisk-chan-quectel_*.deb.sha256
+          if-no-files-found: error
 
-    - name: upload-artifact-tar
-      uses: actions/upload-artifact@v5
-      with:
-        name: chan-quectel-tar
-        path: |
-          package/asterisk-chan-quectel_*.tar.gz
-          package/asterisk-chan-quectel_*.tar.gz.sha256
-        if-no-files-found: error
+      - name: upload-artifact-tar
+        uses: actions/upload-artifact@v5
+        with:
+          name: chan-quectel-tar
+          path: |
+            package/asterisk-chan-quectel_*.tar.gz
+            package/asterisk-chan-quectel_*.tar.gz.sha256
+          if-no-files-found: error
 
   build-arch:
     runs-on: ubuntu-latest
@@ -54,66 +54,66 @@ jobs:
     strategy:
       matrix:
         include:
-        - distro: ubuntu_latest
-          arch: armv7
+          - distro: ubuntu_latest
+            arch: armv7
 
-        - distro: ubuntu_latest
-          arch: aarch64
+          - distro: ubuntu_latest
+            arch: aarch64
 
-        - distro: ubuntu_latest
-          arch: riscv64
+          - distro: ubuntu_latest
+            arch: riscv64
 
-        - distro: ubuntu_latest
-          arch: s390x
+          - distro: ubuntu_latest
+            arch: s390x
 
-        - distro: ubuntu_latest
-          arch: ppc64le
+          - distro: ubuntu_latest
+            arch: ppc64le
 
     steps:
-    - name: checkout
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-    - name: install-required-packages
-      uses: ./.github/actions/install-required-packages
+      - name: install-required-packages
+        uses: ./.github/actions/install-required-packages
 
-    - name: run-on-arch
-      uses: uraimo/run-on-arch-action@v3
-      with:
-        distro: ${{ matrix.distro }}
-        arch: ${{ matrix.arch }}
-        githubToken: ${{ github.token }}
-        install: |
-          apt-get -y update
-          apt-get -y install \
-            git wget jq \
-            build-essential cmake \
-            asterisk-dev libasound2-dev libsqlite3-dev
-          apt-get -y install lintian
-          git config --global --add safe.directory "/home/runner/work/asterisk-chan-quectel/asterisk-chan-quectel"
-        env: |
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          set +eu
-          cmake -P "make-build-dir.cmake"
-          cmake -P "make-package.cmake"
-          exit 0
+      - name: run-on-arch
+        uses: uraimo/run-on-arch-action@v3
+        with:
+          distro: ${{ matrix.distro }}
+          arch: ${{ matrix.arch }}
+          githubToken: ${{ github.token }}
+          install: |
+            apt-get -y update
+            apt-get -y install \
+              build-essential cmake \
+              git wget rsync jq \
+              asterisk-dev libasound2-dev libsqlite3-dev
+            apt-get -y install lintian
+            git config --global --add safe.directory "${{ github.workspace }}"
+          env: |
+            DEBIAN_FRONTEND: noninteractive
+          run: |
+            set +eu
+            cmake -P make-build-dir.cmake
+            cmake -P make-package.cmake
+            exit 0
 
-    - name: upload-artifact-deb
-      uses: actions/upload-artifact@v5
-      with:
-        name: ${{ format('chan-quectel-{0}-{1}-deb', matrix.distro, matrix.arch) }}
-        path: |
-          package/asterisk-chan-quectel_*.deb
-          package/asterisk-chan-quectel_*.deb.sha256
-        if-no-files-found: error
+      - name: upload-artifact-deb
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ format('chan-quectel-{0}-{1}-deb', matrix.distro, matrix.arch) }}
+          path: |
+            package/asterisk-chan-quectel_*.deb
+            package/asterisk-chan-quectel_*.deb.sha256
+          if-no-files-found: error
 
-    - name: upload-artifact-tar
-      uses: actions/upload-artifact@v5
-      with:
-        name: ${{ format('chan-quectel-{0}-{1}-tar', matrix.distro, matrix.arch) }}
-        path: |
-          package/asterisk-chan-quectel_*.tar.gz
-          package/asterisk-chan-quectel_*.tar.gz.sha256
-        if-no-files-found: error
+      - name: upload-artifact-tar
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ format('chan-quectel-{0}-{1}-tar', matrix.distro, matrix.arch) }}
+          path: |
+            package/asterisk-chan-quectel_*.tar.gz
+            package/asterisk-chan-quectel_*.tar.gz.sha256
+          if-no-files-found: error

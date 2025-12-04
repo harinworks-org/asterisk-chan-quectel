@@ -31,7 +31,7 @@ runs:
       if: steps.cache-asterisk-restore.outputs.cache-hit != 'true'
       working-directory: asterisk/asterisk-${{ inputs.asterisk-version }}
       shell: bash
-      run: ${{ github.action_path }}/configure-asterisk.sh
+      run: $GITHUB_ACTION_PATH/configure-asterisk.sh
 
     - name: Build Asterisk
       if: steps.cache-asterisk-restore.outputs.cache-hit != 'true'

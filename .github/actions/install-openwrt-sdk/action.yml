@@ -17,7 +17,7 @@ inputs:
   eabi:
     required: false
     description: EABI
-    default: false
+    default: "false"
 runs:
   using: composite
   steps:
@@ -39,14 +39,14 @@ runs:
       if: steps.cache-owrt-sdk-restore.outputs.cache-hit != 'true' && inputs.eabi == 'true'
       shell: bash
       working-directory: owrtsdk
-      run: ${{ github.action_path }}/download-owrt-sdk.sh ${{ inputs.target }} ${{ inputs.openwrt-version }} openwrt-sdk-${{ inputs.openwrt-version }}-${{ inputs.target }}_gcc-${{ inputs.gcc-version }}_musl_eabi.Linux-x86_64
+      run: $GITHUB_ACTION_PATH/download-owrt-sdk.sh ${{ inputs.target }} ${{ inputs.openwrt-version }} openwrt-sdk-${{ inputs.openwrt-version }}-${{ inputs.target }}_gcc-${{ inputs.gcc-version }}_musl_eabi.Linux-x86_64
 
     - name: Download OpenWRT SDK
       id: download-owrt-sdk
       if: steps.cache-owrt-sdk-restore.outputs.cache-hit != 'true' && inputs.eabi != 'true'
       shell: bash
       working-directory: owrtsdk
-      run: ${{ github.action_path }}/download-owrt-sdk.sh ${{ inputs.target }} ${{ inputs.openwrt-version }} openwrt-sdk-${{ inputs.openwrt-version }}-${{ inputs.target }}_gcc-${{ inputs.gcc-version }}_musl.Linux-x86_64
+      run: $GITHUB_ACTION_PATH/download-owrt-sdk.sh ${{ inputs.target }} ${{ inputs.openwrt-version }} openwrt-sdk-${{ inputs.openwrt-version }}-${{ inputs.target }}_gcc-${{ inputs.gcc-version }}_musl.Linux-x86_64
 
     - name: Prepare OpenWRT SDK
       id: prepare-owrt-sdk

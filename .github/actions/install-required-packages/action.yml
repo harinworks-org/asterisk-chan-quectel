@@ -8,8 +8,8 @@ runs:
       run: |
         sudo apt-get -y update
         sudo apt-get -y install \
-          git wget jq \
           build-essential cmake \
+          git wget rsync jq \
           asterisk-dev libasound2-dev libsqlite3-dev
 
     - name: Git configuration

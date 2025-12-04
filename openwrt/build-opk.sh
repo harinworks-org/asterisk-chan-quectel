@@ -11,6 +11,7 @@ else
     ./scripts/feeds update -a
     ./scripts/feeds install -a
     ./scripts/feeds install ${PKG_NAME}
+    ./scripts/feeds uninstall linux linux-firmware
 
     cp diffconfig .config
     make defconfig

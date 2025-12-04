@@ -9,30 +9,30 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: checkout
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-    - name: install-required-packages
-      uses: ./.github/actions/install-required-packages
+      - name: install-required-packages
+        uses: ./.github/actions/install-required-packages
 
-    - name: get-source-date-epoch
-      run: ./get-source-date-epoch.sh > ".env"
+      - name: get-source-date-epoch
+        run: ./get-source-date-epoch.sh > .env
 
-    - name: get-build-flags
-      run: ./get-build-flags.sh deb > "CMakeUserPresets.json"
+      - name: get-build-flags
+        run: ./get-build-flags.sh deb > CMakeUserPresets.json
 
-    - name: make-build-dir
-      run: ./dotenv.sh ".env" cmake -P "make-build-dir.cmake" deb
+      - name: make-build-dir
+        run: ./dotenv.sh .env cmake -P make-build-dir.cmake deb
 
-    - name: build-chan-quectel
-      run: ./dotenv.sh ".env" cmake -P "build-chan-quectel.cmake" deb
+      - name: build-chan-quectel
+        run: ./dotenv.sh .env cmake -P build-chan-quectel.cmake deb
 
-    - name: upload-artifact
-      uses: actions/upload-artifact@v5
-      with:
-        name: chan-quectel
-        path: |
-          build/*/chan_quectel.so
-        if-no-files-found: error
+      - name: upload-artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: chan-quectel
+          path: |
+            build/*/chan_quectel.so
+          if-no-files-found: error
