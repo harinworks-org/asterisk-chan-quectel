@@ -7,7 +7,7 @@ if [ -f .config ]; then
     make package/${PKG_NAME}/clean
 else
     # configure SDK first
-    cat feeds.conf.default feeds-strskx.conf >> feeds.conf
+    cat feeds.conf.default feeds-custom.conf >> feeds.conf
     ./scripts/feeds update -a
     ./scripts/feeds install -a
     ./scripts/feeds install ${PKG_NAME}
@@ -20,5 +20,5 @@ fi
 make package/${PKG_NAME}/compile "$@"
 make package/index
 
-IPK=$(ls bin/packages/*/strskx/*.ipk)
+IPK=$(ls bin/packages/*/custom/*.ipk)
 echo "Package: $IPK"

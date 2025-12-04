@@ -76,7 +76,7 @@ jobs:
 
       - name: setup-feeds
         working-directory: asterisk-modules/asterisk-chan-quectel/install/openwrt
-        run: cp -f feeds-strskx.conf diffconfig build-opk.sh "${{ matrix.target }}"
+        run: cp -f feeds-custom.conf diffconfig build-opk.sh "${{ matrix.target }}"
 
       - name: build-opk
         working-directory: asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}
@@ -87,5 +87,5 @@ jobs:
         with:
           name: ${{ format('chan-quectel-{0}-{1}-{2}-{3}-{4}', matrix.openwrt, matrix.asterisk, matrix.target, matrix.arch, matrix.gcc) }}
           path: |
-            asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}/bin/packages/*/strskx/*.ipk
+            asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}/bin/packages/*/custom/*.ipk
           if-no-files-found: error
