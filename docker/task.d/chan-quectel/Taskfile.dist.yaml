@@ -16,7 +16,7 @@ tasks:
       - test -n "{{.PRESET}}"
     dir: '{{.BUILD_DIR}}'
     cmds:
-      - git clone -q --branch={{.BRANCH}} http://github.com/RoEdAl/asterisk-chan-quectel.git chan-quectel
+      - git clone -q --branch={{.BRANCH}} http://github.com/harinworks-org/asterisk-chan-quectel.git chan-quectel
 
   configure:
     desc: Create CMake presets

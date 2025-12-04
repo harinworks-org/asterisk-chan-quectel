@@ -11,7 +11,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=@PROJECT_NAME@
  
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/RoEdAl/@PROJECT_NAME@
+PKG_SOURCE_URL:=https://github.com/harinworks-org/@PROJECT_NAME@
 PKG_SOURCE_DATE:=@PROJECT_VERSION_MAJOR@-@PROJECT_VERSION_MINOR@-@PROJECT_VERSION_PATCH@
 PKG_RELEASE:=$(AUTORELEASE)
 PKG_SOURCE_VERSION:=@CHAN_SOURCE_VERSION@
@@ -32,7 +32,7 @@ define Package/@PROJECT_NAME@
   SUBMENU:=Telephony
   SECTION:=net
   CATEGORY:=Network
-  URL:=http://github.com/RoEdAl/@PROJECT_NAME@
+  URL:=http://github.com/harinworks-org/@PROJECT_NAME@
   DEPENDS:=@ASTERISK_PKG@ +alsa-lib +libsqlite3
   EXTRA_DEPENDS:=kmod-usb2 kmod-usb-acm kmod-usb-serial kmod-usb-serial-option kmod-usb-audio usb-modeswitch
   TITLE:=Quectel module support
