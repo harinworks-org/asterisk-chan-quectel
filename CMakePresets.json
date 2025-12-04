@@ -49,7 +49,7 @@
         },
         "CPACK_PACKAGE_CONTACT": {
           "type": "STRING",
-          "value": "me@hrin.org"
+          "value": "me@harin.net"
         },
         "CPACK_DEBIAN_PACKAGE_SHLIBDEPS": {
           "type": "BOOL",
