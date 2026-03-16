@@ -51,7 +51,7 @@ CMAKE_LANGUAGE(CALL INSTALL
 )
 
 CMAKE_LANGUAGE(CALL INSTALL
-  PROGRAMS build-opk.sh
+  PROGRAMS build-openwrt.sh
   DESTINATION openwrt
   ${OPENWRT_INSTALL_FLAGS}
 )
@@ -106,20 +106,20 @@ IF(BUILD_OPENWRT_MAKEFILE_STANDALONE)
     ${OPENWRT_INSTALL_FLAGS}
   )
 
-  CONFIGURE_FILE(makefile-standalone.in Makefile-opkg @ONLY)
+  CONFIGURE_FILE(makefile-standalone.in Makefile-openwrt @ONLY)
 
   CMAKE_LANGUAGE(CALL INSTALL
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/Makefile-opkg
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/Makefile-openwrt
     DESTINATION ${OPENWRT_FEED}
     RENAME Makefile
     ${OPENWRT_INSTALL_FLAGS}
   )
 
 ELSE()
-  CONFIGURE_FILE(makefile-git.in Makefile-opkg @ONLY)
+  CONFIGURE_FILE(makefile-git.in Makefile-openwrt @ONLY)
 
   CMAKE_LANGUAGE(CALL INSTALL
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/Makefile-opkg
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/Makefile-openwrt
     DESTINATION ${OPENWRT_FEED}
     RENAME Makefile
     ${OPENWRT_INSTALL_FLAGS}

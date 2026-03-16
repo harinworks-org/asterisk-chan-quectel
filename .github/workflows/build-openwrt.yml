@@ -1,4 +1,4 @@
-name: build-ipk
+name: build-openwrt
 
 on:
   workflow_dispatch:
@@ -12,6 +12,30 @@ jobs:
     strategy:
       matrix:
         include:
+          - openwrt: 25.12.0
+            asterisk: 230202
+            target: ath79-generic
+            arch: mips
+            gcc: 14.3.0
+
+          - openwrt: 25.12.0
+            asterisk: 230202
+            target: rockchip-armv8
+            arch: aarch64
+            gcc: 14.3.0
+
+          - openwrt: 25.12.0
+            asterisk: 230202
+            target: x86-64
+            arch: x86_64
+            gcc: 14.3.0
+
+          - openwrt: 25.12.0
+            asterisk: 230202
+            target: x86-generic
+            arch: i386
+            gcc: 14.3.0
+
           - openwrt: 23.05.0
             asterisk: 200300
             target: ath79-generic
@@ -76,16 +100,16 @@ jobs:
 
       - name: setup-feeds
         working-directory: asterisk-modules/asterisk-chan-quectel/install/openwrt
-        run: cp -f feeds-custom.conf diffconfig build-opk.sh "${{ matrix.target }}"
+        run: cp -f feeds-custom.conf diffconfig build-openwrt.sh "${{ matrix.target }}"
 
-      - name: build-opk
+      - name: build-openwrt
         working-directory: asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}
-        run: ./build-opk.sh
+        run: ./build-openwrt.sh
 
       - name: upload-artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ format('chan-quectel-{0}-{1}-{2}-{3}-{4}', matrix.openwrt, matrix.asterisk, matrix.target, matrix.arch, matrix.gcc) }}
           path: |
-            asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}/bin/packages/*/custom/*.ipk
+            asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}/bin/packages/*/custom/*.[ai]pk
           if-no-files-found: error

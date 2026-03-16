@@ -47,10 +47,10 @@ define Package/@PROJECT_NAME@/conffiles
 endef
 
 define Package/@PROJECT_NAME@/install
-  $(INSTALL_DIR) $(1)/etc/asterisk
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ipkg-install/etc/asterisk/quectel.conf $(1)/etc/asterisk
 	$(INSTALL_DIR) $(1)$(MODULES_DIR)
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ipkg-install/$(MODULES_DIR)/chan_quectel.so $(1)$(MODULES_DIR)
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/$(MODULES_DIR)/chan_quectel.so $(1)$(MODULES_DIR)
+  $(INSTALL_DIR) $(1)/etc/asterisk
+	$(INSTALL_CONF) $(PKG_INSTALL_DIR)/etc/asterisk/quectel.conf $(1)/etc/asterisk
 endef
 
 define Package/@PROJECT_NAME@/postinst

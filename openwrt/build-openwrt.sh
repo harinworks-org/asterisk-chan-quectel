@@ -17,8 +17,8 @@ else
     make defconfig
 fi
 
-make package/${PKG_NAME}/compile "$@"
+make package/${PKG_NAME}/compile V=s "$@"
 make package/index
 
-IPK=$(ls bin/packages/*/custom/*.ipk)
-echo "Package: $IPK"
+PKG_PATH=$(ls bin/packages/*/custom/*.[ai]pk)
+echo "Package: $PKG_PATH"
