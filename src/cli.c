@@ -8,8 +8,7 @@
 
    bg <bg_one@mail.ru>
 */
-#include <alsa/global.h>
-#include <alsa/version.h>
+#include <alsa/asoundlib.h>
 #include <sqlite3.h>
 
 #include "ast_config.h"

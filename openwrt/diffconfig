@@ -1,8 +1,0 @@
-# CONFIG_ALL is not set
-# CONFIG_ALL_KMODS is not set
-# CONFIG_ALL_NONSHARED is not set
-# CONFIG_DEVEL is not set
-# CONFIG_SIGNED_PACKAGES is not set
-CONFIG_PACKAGE_asterisk=m
-CONFIG_PACKAGE_asterisk-chan-quectel=m
-

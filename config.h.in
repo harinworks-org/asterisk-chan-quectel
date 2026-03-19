@@ -47,60 +47,7 @@
 /* Define if you have HAVE_AST_CONTROL_SRCCHANGE in asterisk/frame.h */
 #define HAVE_AST_CONTROL_SRCCHANGE @HAVE_AST_CONTROL_SRCCHANGE_STR@
 
-/* clang-format on */
-
-/* Define you have the <fcntl.h> header file. */
-#cmakedefine01 HAVE_FCNTL_H
-
-/* Define you have the <inttypes.h> header file. */
-#cmakedefine01 HAVE_INTTYPES_H
-
-/* Define you have the <strings.h> header file. */
-#cmakedefine01 HAVE_STRINGS_H
-
-/* Define you have the <string.h> header file. */
-#cmakedefine01 HAVE_STRING_H
-
-/* Define you have the <sys/stat.h> header file. */
-#cmakedefine01 HAVE_SYS_STAT_H
-
-/* Define you have the <sys/time.h> header file. */
-#cmakedefine01 HAVE_SYS_TIME_H
-
-/* Define you have the <sys/types.h> header file. */
-#cmakedefine01 HAVE_SYS_TYPES_H
-
-/* Define you have the <termios.h> header file. */
-#cmakedefine01 HAVE_TERMIOS_H
-
-/* Define you have the <unistd.h> header file. */
-#cmakedefine01 HAVE_UNISTD_H
-
-/* clang-format off */
 #define ICONV_CONST @ICONV_CONST_STR@
 #cmakedefine ICONV_T @ICONV_T@
+
 /* clang-format on */
-
-/* Define to 1 if you have the `memchr' function. */
-#cmakedefine01 HAVE_MEMCHR
-
-/* Define to 1 if you have the `memmove' function. */
-#cmakedefine01 HAVE_MEMMOVE
-
-/* Define to 1 if you have the `memset' function. */
-#cmakedefine01 HAVE_MEMSET
-
-/* Define to 1 if you have the `memmem' function. */
-#cmakedefine01 HAVE_MEMMEM
-
-/* Define to 1 if you have the `realpath' function. */
-#cmakedefine01 HAVE_REALPATH
-
-/* Define to 1 if you have the `strtol' function. */
-#cmakedefine01 HAVE_STRTOL
-
-/* Define to 1 if you have the `strcasecmp' function. */
-#cmakedefine01 HAVE_STRCASECMP
-
-/* Define to 1 if you have the `strncasecmp' function. */
-#cmakedefine01 HAVE_STRNCASECMP
