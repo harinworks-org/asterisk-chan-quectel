@@ -69,10 +69,11 @@ typedef struct at_queue_cmd {
 #define ATQ_CMD_INIT_DYNI(e, icmd) ATQ_CMD_INIT_DYNF(e, icmd, ATQ_CMD_FLAG_IGNORE)
 
 /* static initializers */
-#define ATQ_CMD_DECLARE_STFT(cmd, res, data, flags, s, u)                                  \
-    {                                                                                      \
-        (cmd), (res), ATQ_CMD_FLAG_STATIC | flags, {(s), (u)}, (void*)(data), sizeof(data) \
-    }
+#define ATQ_CMD_DECLARE_STFT(cmd, res, data, flags, s, u) \
+    {                                                     \
+        (cmd), (res), ATQ_CMD_FLAG_STATIC | flags, {(s), (u)}, \
+             (void*)(data), sizeof(data) \
+}
 #define ATQ_CMD_DECLARE_STF(cmd, res, data, flags) ATQ_CMD_DECLARE_STFT(cmd, res, data, flags, ATQ_CMD_TIMEOUT_MEDIUM, 0)
 // #define ATQ_CMD_DECLARE_STF(cmd,res,data,flags)	{ (cmd), (res), ATQ_CMD_FLAG_STATIC|flags, {ATQ_CMD_TIMEOUT_MEDIUM,
 // 0}, (char*)(data), STRLEN(data) }
@@ -80,9 +81,10 @@ typedef struct at_queue_cmd {
 #define ATQ_CMD_DECLARE_STI(cmd, atcmd) ATQ_CMD_DECLARE_STF(cmd, RES_OK, AT_CMD(atcmd), ATQ_CMD_FLAG_IGNORE)
 #define ATQ_CMD_DECLARE_STIT(cmd, atcmd, s, u) ATQ_CMD_DECLARE_STFT(cmd, RES_OK, AT_CMD(atcmd), ATQ_CMD_FLAG_IGNORE, s, u)
 
-#define ATQ_CMD_DECLARE_DYNFT(cmd, res, flags, s, u)                 \
-    {                                                                \
-        (cmd), (res), flags & ~ATQ_CMD_FLAG_STATIC, {(s), (u)}, 0, 0 \
+#define ATQ_CMD_DECLARE_DYNFT(cmd, res, flags, s, u) \
+    {                                                \
+        (cmd), (res), flags & ~ATQ_CMD_FLAG_STATIC, {(s), (u)}, \
+             0, 0 \
     }
 #define ATQ_CMD_DECLARE_DYNF(cmd, res, flags) ATQ_CMD_DECLARE_DYNFT(cmd, res, flags, ATQ_CMD_TIMEOUT_MEDIUM, 0)
 // #define ATQ_CMD_DECLARE_DYNF(cmd,res,flags)	{ (cmd), (res),  flags & ~ATQ_CMD_FLAG_STATIC, {ATQ_CMD_TIMEOUT_MEDIUM,

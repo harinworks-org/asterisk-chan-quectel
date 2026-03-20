@@ -375,9 +375,9 @@ static struct ast_custom_function status_ex_function = {
 
 /* clang-format on */
 
-static const char APP_SEND_SMS[]  = "QUECTEL_SEND_SMS";
-static const char APP_SEND_USSD[] = "QUECTEL_SEND_USSD";
-static const char APP_DELETE_SMS[]  = "QUECTEL_DELETE_SMS";
+static const char APP_SEND_SMS[]   = "QUECTEL_SEND_SMS";
+static const char APP_SEND_USSD[]  = "QUECTEL_SEND_USSD";
+static const char APP_DELETE_SMS[] = "QUECTEL_DELETE_SMS";
 
 int app_register()
 {

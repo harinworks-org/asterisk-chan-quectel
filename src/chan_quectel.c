@@ -1478,7 +1478,7 @@ static int public_state_init(struct public_state* state)
     AST_RWLIST_RDLOCK(&state->devices);
     AST_RWLIST_TRAVERSE(&state->devices, pvt, entry) {
         SCOPED_MUTEX(pvt_lock, &pvt->lock);
-        append_fmt(channel_tech.capabilities, (struct ast_format*) pvt_get_audio_format(pvt));
+        append_fmt(channel_tech.capabilities, (struct ast_format*)pvt_get_audio_format(pvt));
     }
     AST_RWLIST_UNLOCK(&state->devices);
 

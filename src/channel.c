@@ -1099,7 +1099,7 @@ int channel_start_local_json(struct pvt* pvt, const char* exten, const char* num
 }
 
 int channel_start_local_report(struct pvt* pvt, const char* subject, local_report_direction direction, const char* number, const struct ast_tm* ts,
-                                const struct ast_tm* dt, int success, struct ast_json* const report)
+                               const struct ast_tm* dt, int success, struct ast_json* const report)
 {
     static const size_t AST_TM_MAX_LEN = 64;
 
