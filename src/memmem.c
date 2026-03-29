@@ -37,8 +37,8 @@
 void* memmem(const void* l, size_t l_len, const void* s, size_t s_len)
 {
     register char *cur, *last;
-    const char* cl = (const char*)l;
-    const char* cs = (const char*)s;
+    char* cl = (char*)l;
+    char* cs = (char*)s;
 
     /* we need something to compare */
     if (l_len == 0 || s_len == 0) {
@@ -52,7 +52,13 @@ void* memmem(const void* l, size_t l_len, const void* s, size_t s_len)
 
     /* special case where s_len == 1 */
     if (s_len == 1) {
-        return memchr(l, (int)*cs, l_len);
+        char* p;
+        for (p = cl; p < cl + l_len; p++) {
+            if (*p == *cs) {
+                return p;
+            }
+        }
+        return NULL;
     }
 
     /* the last position where its possible to find "s" in "l" */

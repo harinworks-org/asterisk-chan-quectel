@@ -11,28 +11,29 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
-      - name: install-required-packages
-        uses: ./.github/actions/install-required-packages
+      - name: install-dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install \
+            build-essential cmake \
+            asterisk-dev libasound2-dev libsqlite3-dev
 
-      - name: get-source-date-epoch
-        run: ./get-source-date-epoch.sh > .env
+      - name: build
+        run: |
+          cmake -B build -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build -j$(nproc)
 
-      - name: get-build-flags
-        run: ./get-build-flags.sh deb > CMakeUserPresets.json
-
-      - name: make-build-dir
-        run: ./dotenv.sh .env cmake -P make-build-dir.cmake deb
-
-      - name: build-chan-quectel
-        run: ./dotenv.sh .env cmake -P build-chan-quectel.cmake deb
+      - name: package
+        run: cmake --build build --target package
 
       - name: upload-artifact
         uses: actions/upload-artifact@v7
         with:
           name: chan-quectel
           path: |
-            build/*/chan_quectel.so
+            build/src/chan_quectel.so
+            build/asterisk-chan-quectel*.deb
           if-no-files-found: error

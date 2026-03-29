@@ -6,110 +6,48 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/catthehacker/ubuntu:js-22.04
     continue-on-error: true
     strategy:
       matrix:
-        include:
-          - openwrt: 25.12.0
-            asterisk: 230202
-            target: ath79-generic
-            arch: mips
-            gcc: 14.3.0
-
-          - openwrt: 25.12.0
-            asterisk: 230202
-            target: rockchip-armv8
-            arch: aarch64
-            gcc: 14.3.0
-
-          - openwrt: 25.12.0
-            asterisk: 230202
-            target: x86-64
-            arch: x86_64
-            gcc: 14.3.0
-
-          - openwrt: 25.12.0
-            asterisk: 230202
-            target: x86-generic
-            arch: i386
-            gcc: 14.3.0
-
-          - openwrt: 23.05.0
-            asterisk: 200300
-            target: ath79-generic
-            arch: mips
-            gcc: 12.3.0
-
-          - openwrt: 23.05.0
-            asterisk: 200300
-            target: rockchip-armv8
-            arch: aarch64
-            gcc: 12.3.0
-
-          - openwrt: 23.05.0
-            asterisk: 200300
-            target: x86-64
-            arch: x86_64
-            gcc: 12.3.0
-
-          - openwrt: 23.05.0
-            asterisk: 200300
-            target: x86-generic
-            arch: i386
-            gcc: 12.3.0
+        arch:
+          - aarch64_generic
+          - mips_24kc
+          - x86_64
+        branch:
+          - SNAPSHOT
+          - openwrt-25.12
+          - openwrt-24.10
 
     steps:
-      - name: sparse-checkout
-        uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            .github/actions
-          sparse-checkout-cone-mode: false
-
-      - name: install-required-packages
-        uses: ./.github/actions/install-required-packages
-
-      - name: install-openwrt-sdk
-        uses: ./.github/actions/install-openwrt-sdk
-        with:
-          openwrt-version: ${{ matrix.openwrt }}
-          gcc-version: ${{ matrix.gcc }}
-          target: ${{ matrix.target }}
-          arch: ${{ matrix.arch }}
-          eabi: ${{ matrix.eabi }}
-
       - name: checkout
         uses: actions/checkout@v6
+
+      - name: checkout-action
+        uses: actions/checkout@v6
         with:
-          path: asterisk-modules/asterisk-chan-quectel
-          fetch-depth: 0
+          repository: openwrt/gh-action-sdk
+          ref: main
+          path: .gh-action-sdk
 
-      - name: configure-openwrt-makefile
-        run: cmake -P asterisk-modules/asterisk-chan-quectel/configure-openwrt-makefile.cmake "${{ matrix.asterisk }}"
-
-      - name: install-openwrt-makefile
-        run: cmake -P asterisk-modules/asterisk-chan-quectel/install-openwrt-makefile.cmake
-
-      - name: create-symlink
+      - name: patch-action
         run: |
-          sdk_dir="$(cd owrtsdk; pwd)"
-          cd asterisk-modules/asterisk-chan-quectel/install/openwrt
-          ln -sf "${sdk_dir}/${{ matrix.target }}" "${{ matrix.target }}"
+          sed -i \
+            's|"package/$PKG/check" V=s|"package/$PKG/check" V=s FIXUP=1|' \
+            .gh-action-sdk/entrypoint.sh
 
-      - name: setup-feeds
-        working-directory: asterisk-modules/asterisk-chan-quectel/install/openwrt
-        run: cp -f feeds-custom.conf diffconfig build-openwrt.sh "${{ matrix.target }}"
-
-      - name: build-openwrt
-        working-directory: asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}
-        run: ./build-openwrt.sh
+      - name: build
+        uses: ./.gh-action-sdk
+        env:
+          ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
+          PACKAGES: asterisk-chan-quectel
+          NO_REFRESH_CHECK: true
+          V: s
+          FIXUP: 1
 
       - name: upload-artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ format('chan-quectel-{0}-{1}-{2}-{3}-{4}', matrix.openwrt, matrix.asterisk, matrix.target, matrix.arch, matrix.gcc) }}
+          name: chan-quectel-${{ matrix.arch }}-${{ matrix.branch }}
           path: |
-            asterisk-modules/asterisk-chan-quectel/install/openwrt/${{ matrix.target }}/bin/packages/*/custom/*.[ai]pk
+            bin/packages/${{ matrix.arch }}/action/asterisk-chan-quectel*.[ai]pk
           if-no-files-found: error
